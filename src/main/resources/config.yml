@@ -1,0 +1,24 @@
+# ============================================
+# HammrEnhance - 下界合金装备强化系统 配置
+# ============================================
+
+# 主强化成功率 (%) - 顺序: 1→2, 2→3, ..., 9→10
+main-success-rates: [90, 85, 80, 75, 60, 50, 30, 25, 10]
+
+# 分支强化成功率 (%) - 顺序: 1→2, 2→3, ..., 5→6
+branch-success-rates: [40, 35, 25, 15, 10]
+
+# 每次强化消耗金币
+cost-gold: 1000
+
+# 失败掉级概率 (0.0 - 1.0)
+level-down-chance: 0.7
+
+# 铁砧爆炸概率 (0.0 - 1.0)
+explosion-chance: 0.15
+
+# 材料设置
+materials:
+  main-low: DIAMOND
+  main-high: NETHERITE_INGOT
+  branch: DIAMOND

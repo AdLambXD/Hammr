@@ -1,0 +1,19 @@
+# 排除所有文件夹
+*/
+# 保留
+!.gitignore
+!MD/**/
+!LICENSE
+!README.md
+# 源代码 文件
+!src/
+!src/main/
+!src/main/**/
+# 构建
+!build.gradle.kts
+!settings.gradle.kts
+!gradlew
+!gradlew.bat
+!gradle/
+!gradle/wrapper/
+!gradle/wrapper/gradle-wrapper.properties
