@@ -56,10 +56,6 @@ public class AnvilListener implements Listener {
         }
 
         boolean isMain = type.equals("主强化");
-        int previewMain = isMain ? Math.min(data.mainLevel() + 1, 10) : data.mainLevel();
-        int previewBranch = (!isMain) ? Math.min(data.branchLevel() + 1, 6) : data.branchLevel();
-        EnhanceData previewData = new EnhanceData(previewMain, previewBranch, data.branchType());
-
         ItemStack preview = left.clone();
         ItemMeta previewMeta = preview.getItemMeta();
 
@@ -126,7 +122,6 @@ public class AnvilListener implements Listener {
         ItemStack resultItem = result.enhancedItem() != null ? result.enhancedItem() : left;
 
         inv.setItem(0, null);
-        inv.setItem(1, null);
         inv.setItem(2, null);
 
         if (result.exploded() && anvilLoc != null) {
@@ -147,8 +142,6 @@ public class AnvilListener implements Listener {
         }
 
         EnhanceManager.syncInventory(player);
-        player.closeInventory();
-        damageAnvil(anvilLoc);
     }
 
     private boolean isMainEnhancement(ItemStack item, EnhanceData data,
@@ -180,24 +173,6 @@ public class AnvilListener implements Listener {
         Block block = loc.getBlock();
         if (block.getType().name().contains("ANVIL")) {
             block.getWorld().createExplosion(loc, 1.0f, false, false);
-            block.setType(Material.AIR);
-        }
-    }
-
-    private void damageAnvil(Location loc) {
-        if (loc == null) return;
-        Block block = loc.getBlock();
-        Material type = block.getType();
-        if (type == Material.AIR) return;
-
-        Material next = switch (type) {
-            case ANVIL -> Material.CHIPPED_ANVIL;
-            case CHIPPED_ANVIL -> Material.DAMAGED_ANVIL;
-            default -> null;
-        };
-        if (next != null) {
-            block.setType(next);
-        } else if (type == Material.DAMAGED_ANVIL) {
             block.setType(Material.AIR);
         }
     }

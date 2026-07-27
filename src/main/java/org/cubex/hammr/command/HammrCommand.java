@@ -18,7 +18,9 @@ import org.cubex.hammr.storage.PDCAdapter;
 import org.cubex.hammr.util.ItemChecker;
 import org.cubex.hammr.util.LoreBuilder;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 public class HammrCommand implements TabExecutor {
 
@@ -135,8 +137,8 @@ public class HammrCommand implements TabExecutor {
         if (mainEnch != null && data.mainLevel() > 0) {
             meta.removeEnchant(mainEnch);
         }
-        if (data.hasBranch()) {
-            Enchantment branchEnch = BranchPool.toEnchantment(data.branchType());
+        for (var entry : data.branches().entrySet()) {
+            Enchantment branchEnch = BranchPool.toEnchantment(entry.getKey());
             if (branchEnch != null) {
                 meta.removeEnchant(branchEnch);
             }
@@ -232,16 +234,25 @@ public class HammrCommand implements TabExecutor {
             }
         }
 
-        Enchantment branchEnch = branchType != null ? BranchPool.toEnchantment(branchType) : null;
-        if (branchEnch != null) {
-            if (branchLevel > 0) {
-                meta.addEnchant(branchEnch, branchLevel, true);
-            } else {
-                meta.removeEnchant(branchEnch);
-            }
+        Map<String, Integer> branches = new LinkedHashMap<>();
+        if (branchType != null && branchLevel > 0) {
+            branches.put(branchType, branchLevel);
         }
 
-        EnhanceData data = new EnhanceData(mainLevel, branchLevel, branchType);
+        String equipType = ItemChecker.getEquipType(item);
+        List<String> poolKeys = BranchPool.getPoolKeys(equipType);
+        if (poolKeys != null) {
+            for (String key : poolKeys) {
+                Enchantment ench = BranchPool.toEnchantment(key);
+                if (ench != null) meta.removeEnchant(ench);
+            }
+        }
+        Enchantment newEnch = branchType != null ? BranchPool.toEnchantment(branchType) : null;
+        if (newEnch != null && branchLevel > 0) {
+            meta.addEnchant(newEnch, branchLevel, true);
+        }
+
+        EnhanceData data = new EnhanceData(mainLevel, branches);
         PDCAdapter.writeData(meta, data);
         meta.lore(LoreBuilder.buildLore(data));
         item.setItemMeta(meta);

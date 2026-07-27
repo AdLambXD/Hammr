@@ -15,16 +15,18 @@ import org.cubex.hammr.util.ItemChecker;
 import org.cubex.hammr.util.LoreBuilder;
 import org.cubex.hammr.util.RomanNumber;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class EnhanceManager {
 
-    private static final int[] MAIN_RATES = {90, 85, 80, 75, 60, 50, 30, 25, 10};
+    private static final int[] MAIN_RATES = {95, 95, 95, 95, 95, 85, 75, 60, 40, 20};
     private static final int[] BRANCH_RATES = {40, 35, 25, 15, 10};
     private static final int GOLD_COST = 1000;
-    private static final double LEVEL_DOWN_CHANCE = 0.7;
-    private static final double EXPLOSION_CHANCE = 0.15;
+    private static final double LEVEL_DOWN_CHANCE = 0.25;
+    private static final double EXPLOSION_CHANCE = 0.10;
 
     public EnhanceResult performMainEnhance(Player player, ItemStack item,
                                              boolean hasDiamond, boolean hasIngot) {
@@ -72,14 +74,14 @@ public class EnhanceManager {
             meta.addEnchant(mainEnch, current + 1, true);
         }
 
-        if (data.hasBranch()) {
-            Enchantment branchEnch = BranchPool.toEnchantment(data.branchType());
+        for (var entry : data.branches().entrySet()) {
+            Enchantment branchEnch = BranchPool.toEnchantment(entry.getKey());
             if (branchEnch != null) {
-                meta.addEnchant(branchEnch, data.branchLevel(), true);
+                meta.addEnchant(branchEnch, entry.getValue(), true);
             }
         }
 
-        EnhanceData newData = new EnhanceData(newLevel, data.branchLevel(), data.branchType());
+        EnhanceData newData = new EnhanceData(newLevel, data.branches());
         PDCAdapter.writeData(meta, newData);
         meta.lore(LoreBuilder.buildLore(newData));
         item.setItemMeta(meta);
@@ -122,14 +124,14 @@ public class EnhanceManager {
                 meta.removeEnchant(mainEnch);
             }
 
-            if (data.hasBranch()) {
-                Enchantment branchEnch = BranchPool.toEnchantment(data.branchType());
+            for (var entry : data.branches().entrySet()) {
+                Enchantment branchEnch = BranchPool.toEnchantment(entry.getKey());
                 if (branchEnch != null) {
-                    meta.addEnchant(branchEnch, data.branchLevel(), true);
+                    meta.addEnchant(branchEnch, entry.getValue(), true);
                 }
             }
 
-            EnhanceData newData = new EnhanceData(newMain, data.branchLevel(), data.branchType());
+            EnhanceData newData = new EnhanceData(newMain, data.branches());
             PDCAdapter.writeData(meta, newData);
             meta.lore(LoreBuilder.buildLore(newData));
         }
@@ -174,7 +176,7 @@ public class EnhanceManager {
             return EnhanceResult.error("该装备无法进行分支强化！");
         }
 
-        int rateIndex = Math.min(data.branchLevel(), BRANCH_RATES.length - 1);
+        int rateIndex = Math.min(data.branchCount(), BRANCH_RATES.length - 1);
         boolean success = ThreadLocalRandom.current().nextInt(100) < BRANCH_RATES[rateIndex];
 
         ItemStack result = item.clone();
@@ -189,20 +191,27 @@ public class EnhanceManager {
 
     private EnhanceResult applyBranchSuccess(Player player, ItemStack item,
                                              ItemMeta meta, EnhanceData data, String equipType) {
-        int newBranchLevel = data.branchLevel() + 1;
-        String branchType = BranchPool.random(equipType);
-        if (branchType == null) {
+        List<String> pool = BranchPool.getPoolKeys(equipType);
+        if (pool == null || pool.isEmpty()) {
             return EnhanceResult.error("分支池为空！");
         }
 
-        if (data.hasBranch()) {
-            Enchantment old = BranchPool.toEnchantment(data.branchType());
-            if (old != null) meta.removeEnchant(old);
+        List<String> available = new ArrayList<>();
+        for (String key : pool) {
+            if (data.branches().getOrDefault(key, 0) < 6) {
+                available.add(key);
+            }
         }
+        if (available.isEmpty()) {
+            return EnhanceResult.error("所有分支已达最高等级！");
+        }
+        String branchType = available.get(ThreadLocalRandom.current().nextInt(available.size()));
+
+        int newLevel = data.branches().getOrDefault(branchType, 0) + 1;
 
         Enchantment newEnch = BranchPool.toEnchantment(branchType);
         if (newEnch != null) {
-            meta.addEnchant(newEnch, newBranchLevel, true);
+            meta.addEnchant(newEnch, newLevel, true);
         }
 
         Enchantment mainEnch = LoreBuilder.getMainEnchant(item.getType());
@@ -213,7 +222,7 @@ public class EnhanceManager {
             }
         }
 
-        EnhanceData newData = new EnhanceData(data.mainLevel(), newBranchLevel, branchType);
+        EnhanceData newData = data.withBranch(branchType, newLevel);
         PDCAdapter.writeData(meta, newData);
         meta.lore(LoreBuilder.buildLore(newData));
         item.setItemMeta(meta);
@@ -222,10 +231,10 @@ public class EnhanceManager {
 
         String enchName = LoreBuilder.getEnchantDisplayName(newEnch);
         sendActionBar(player, Component.text()
-                .append(Component.text("✦ 分支强化成功！获得 ", NamedTextColor.GREEN))
-                .append(Component.text(enchName + " " + RomanNumber.toRoman(newBranchLevel), NamedTextColor.GREEN, TextDecoration.BOLD))
+                .append(Component.text("✦ 分支强化成功！", NamedTextColor.GREEN))
+                .append(Component.text(enchName + " " + RomanNumber.toRoman(newLevel), NamedTextColor.GREEN, TextDecoration.BOLD))
                 .build());
-        return EnhanceResult.success(item, data.mainLevel(), newBranchLevel);
+        return EnhanceResult.success(item, data.mainLevel(), newData.branchLevel());
     }
 
     private EnhanceResult applyBranchFailure(Player player, ItemStack item,
@@ -246,8 +255,8 @@ public class EnhanceManager {
 
     private void clearAllEnhancements(ItemMeta meta, EnhanceData data, Enchantment mainEnch) {
         if (mainEnch != null) meta.removeEnchant(mainEnch);
-        if (data.hasBranch()) {
-            Enchantment branchEnch = BranchPool.toEnchantment(data.branchType());
+        for (var entry : data.branches().entrySet()) {
+            Enchantment branchEnch = BranchPool.toEnchantment(entry.getKey());
             if (branchEnch != null) meta.removeEnchant(branchEnch);
         }
     }
@@ -311,22 +320,21 @@ public class EnhanceManager {
         int actualMainLevel = (mainEnch != null) ? meta.getEnchantLevel(mainEnch) : 0;
 
         String equipType = ItemChecker.getEquipType(item);
-        int actualBranchLevel = 0;
-        String actualBranchType = null;
+        Map<String, Integer> actualBranches = new LinkedHashMap<>();
 
         List<String> poolKeys = BranchPool.getPoolKeys(equipType);
         if (poolKeys != null) {
             for (String key : poolKeys) {
                 Enchantment ench = BranchPool.toEnchantment(key);
                 if (ench != null && meta.hasEnchant(ench)) {
-                    actualBranchLevel = meta.getEnchantLevel(ench);
-                    actualBranchType = key;
-                    break;
+                    actualBranches.put(key, meta.getEnchantLevel(ench));
                 }
             }
         }
 
-        EnhanceData actualData = new EnhanceData(actualMainLevel, actualBranchLevel, actualBranchType);
+        if (actualMainLevel == 0 && actualBranches.isEmpty()) return;
+
+        EnhanceData actualData = new EnhanceData(actualMainLevel, actualBranches);
         EnhanceData storedData = PDCAdapter.readData(meta);
 
         if (!actualData.equals(storedData)) {

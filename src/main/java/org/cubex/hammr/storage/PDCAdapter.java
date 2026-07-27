@@ -6,12 +6,15 @@ import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 import org.cubex.hammr.HammrEnhance;
 import org.jetbrains.annotations.NotNull;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 public final class PDCAdapter {
 
     private static final NamespacedKey MAIN_KEY = key("enhance_main_level");
-    private static final NamespacedKey BRANCH_KEY = key("enhance_branch_level");
-    private static final NamespacedKey BRANCH_TYPE_KEY = key("enhance_branch_type");
+    private static final NamespacedKey BRANCHES_KEY = key("enhance_branches");
 
     private static NamespacedKey key(String name) {
         return new NamespacedKey(HammrEnhance.getInstance(), name);
@@ -20,34 +23,54 @@ public final class PDCAdapter {
     public static void writeData(@NotNull ItemMeta meta, @NotNull EnhanceData data) {
         PersistentDataContainer pdc = meta.getPersistentDataContainer();
         setInt(pdc, MAIN_KEY, data.mainLevel());
-        setInt(pdc, BRANCH_KEY, data.branchLevel());
-        setString(pdc, BRANCH_TYPE_KEY, data.branchType());
+        setBranches(pdc, BRANCHES_KEY, data.branches());
     }
 
     @NotNull
     public static EnhanceData readData(@NotNull ItemMeta meta) {
         PersistentDataContainer pdc = meta.getPersistentDataContainer();
         int main = pdc.getOrDefault(MAIN_KEY, PersistentDataType.INTEGER, 0);
-        int branch = pdc.getOrDefault(BRANCH_KEY, PersistentDataType.INTEGER, 0);
-        String type = pdc.get(BRANCH_TYPE_KEY, PersistentDataType.STRING);
-        return new EnhanceData(main, branch, type);
+        Map<String, Integer> branches = getBranches(pdc, BRANCHES_KEY);
+        return new EnhanceData(main, branches);
     }
 
     public static boolean isEnhanced(@NotNull ItemMeta meta) {
         return meta.getPersistentDataContainer().has(MAIN_KEY, PersistentDataType.INTEGER);
     }
 
+    private static void setBranches(PersistentDataContainer pdc, NamespacedKey key, Map<String, Integer> branches) {
+        if (branches.isEmpty()) {
+            pdc.remove(key);
+            return;
+        }
+        List<String> list = new ArrayList<>();
+        for (var entry : branches.entrySet()) {
+            list.add(entry.getKey() + ":" + entry.getValue());
+        }
+        pdc.set(key, PersistentDataType.LIST.strings(), list);
+    }
+
+    private static Map<String, Integer> getBranches(PersistentDataContainer pdc, NamespacedKey key) {
+        List<String> list = pdc.get(key, PersistentDataType.LIST.strings());
+        if (list == null || list.isEmpty()) return new LinkedHashMap<>();
+        Map<String, Integer> result = new LinkedHashMap<>();
+        for (String entry : list) {
+            int sep = entry.lastIndexOf(':');
+            if (sep < 1) continue;
+            String type = entry.substring(0, sep);
+            try {
+                int level = Integer.parseInt(entry.substring(sep + 1));
+                if (level > 0) result.put(type, level);
+            } catch (NumberFormatException e) {
+                // skip
+            }
+        }
+        return result;
+    }
+
     private static void setInt(PersistentDataContainer pdc, NamespacedKey key, int value) {
         if (value > 0) {
             pdc.set(key, PersistentDataType.INTEGER, value);
-        } else {
-            pdc.remove(key);
-        }
-    }
-
-    private static void setString(PersistentDataContainer pdc, NamespacedKey key, String value) {
-        if (value != null && !value.isEmpty()) {
-            pdc.set(key, PersistentDataType.STRING, value);
         } else {
             pdc.remove(key);
         }
