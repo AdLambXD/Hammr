@@ -1,6 +1,7 @@
 package org.cubex.hammr;
 
 import org.bukkit.plugin.java.JavaPlugin;
+import org.cubex.hammr.command.HammrCommand;
 import org.cubex.hammr.economy.EconomyManager;
 import org.cubex.hammr.listener.AnvilListener;
 
@@ -20,6 +21,7 @@ public class HammrEnhance extends JavaPlugin {
         }
 
         getServer().getPluginManager().registerEvents(new AnvilListener(), this);
+        getCommand("hammr").setExecutor(new HammrCommand());
         getLogger().info("HammrEnhance enabled.");
     }
 

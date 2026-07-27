@@ -36,5 +36,10 @@ public final class BranchPool {
         return POOL.containsKey(type);
     }
 
+    @Nullable
+    public static List<String> getPoolKeys(String type) {
+        return POOL.get(type);
+    }
+
     private BranchPool() {}
 }

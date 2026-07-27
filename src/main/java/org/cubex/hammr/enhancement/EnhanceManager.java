@@ -14,6 +14,8 @@ import org.cubex.hammr.storage.PDCAdapter;
 import org.cubex.hammr.util.ItemChecker;
 import org.cubex.hammr.util.LoreBuilder;
 import org.cubex.hammr.util.RomanNumber;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class EnhanceManager {
@@ -79,7 +81,7 @@ public class EnhanceManager {
 
         EnhanceData newData = new EnhanceData(newLevel, data.branchLevel(), data.branchType());
         PDCAdapter.writeData(meta, newData);
-        meta.lore(LoreBuilder.buildLore(item, newData));
+        meta.lore(LoreBuilder.buildLore(newData));
         item.setItemMeta(meta);
 
         player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.0f);
@@ -111,7 +113,7 @@ public class EnhanceManager {
             clearAllEnhancements(meta, data, mainEnch);
             EnhanceData empty = EnhanceData.EMPTY;
             PDCAdapter.writeData(meta, empty);
-            meta.lore(LoreBuilder.buildLore(item, empty));
+            meta.lore(new ArrayList<>());
         } else if (levelDown && mainEnch != null) {
             int current = meta.getEnchantLevel(mainEnch);
             if (current > 1) {
@@ -129,7 +131,7 @@ public class EnhanceManager {
 
             EnhanceData newData = new EnhanceData(newMain, data.branchLevel(), data.branchType());
             PDCAdapter.writeData(meta, newData);
-            meta.lore(LoreBuilder.buildLore(item, newData));
+            meta.lore(LoreBuilder.buildLore(newData));
         }
 
         item.setItemMeta(meta);
@@ -213,7 +215,7 @@ public class EnhanceManager {
 
         EnhanceData newData = new EnhanceData(data.mainLevel(), newBranchLevel, branchType);
         PDCAdapter.writeData(meta, newData);
-        meta.lore(LoreBuilder.buildLore(item, newData));
+        meta.lore(LoreBuilder.buildLore(newData));
         item.setItemMeta(meta);
 
         player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.0f);
@@ -288,6 +290,50 @@ public class EnhanceManager {
 
     private void sendActionBar(Player player, Component message) {
         player.sendActionBar(message);
+    }
+
+    public static void syncInventory(org.bukkit.entity.Player player) {
+        for (ItemStack item : player.getInventory().getContents()) {
+            syncItem(item);
+        }
+        for (ItemStack item : player.getInventory().getArmorContents()) {
+            syncItem(item);
+        }
+        syncItem(player.getInventory().getItemInOffHand());
+    }
+
+    private static void syncItem(ItemStack item) {
+        if (!ItemChecker.isNetheriteEquipment(item)) return;
+        ItemMeta meta = item.getItemMeta();
+        if (meta == null) return;
+
+        Enchantment mainEnch = LoreBuilder.getMainEnchant(item.getType());
+        int actualMainLevel = (mainEnch != null) ? meta.getEnchantLevel(mainEnch) : 0;
+
+        String equipType = ItemChecker.getEquipType(item);
+        int actualBranchLevel = 0;
+        String actualBranchType = null;
+
+        List<String> poolKeys = BranchPool.getPoolKeys(equipType);
+        if (poolKeys != null) {
+            for (String key : poolKeys) {
+                Enchantment ench = BranchPool.toEnchantment(key);
+                if (ench != null && meta.hasEnchant(ench)) {
+                    actualBranchLevel = meta.getEnchantLevel(ench);
+                    actualBranchType = key;
+                    break;
+                }
+            }
+        }
+
+        EnhanceData actualData = new EnhanceData(actualMainLevel, actualBranchLevel, actualBranchType);
+        EnhanceData storedData = PDCAdapter.readData(meta);
+
+        if (!actualData.equals(storedData)) {
+            PDCAdapter.writeData(meta, actualData);
+        }
+        meta.lore(LoreBuilder.buildLore(actualData));
+        item.setItemMeta(meta);
     }
 
     public static int getMainSuccessRate(int level) {

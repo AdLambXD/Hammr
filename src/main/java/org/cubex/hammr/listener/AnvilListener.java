@@ -15,6 +15,7 @@ import org.bukkit.event.inventory.PrepareAnvilEvent;
 import org.bukkit.inventory.AnvilInventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.inventory.view.AnvilView;
 import org.cubex.hammr.enhancement.EnhanceManager;
 import org.cubex.hammr.enhancement.EnhanceResult;
 import org.cubex.hammr.storage.EnhanceData;
@@ -28,7 +29,7 @@ public class AnvilListener implements Listener {
     private static final int GOLD_COST = 1000;
     private final EnhanceManager enhanceManager = new EnhanceManager();
 
-    @EventHandler(priority = EventPriority.HIGH)
+    @EventHandler(priority = EventPriority.HIGHEST)
     public void onPrepareAnvil(PrepareAnvilEvent event) {
         AnvilInventory inv = event.getInventory();
         ItemStack left = inv.getItem(0);
@@ -54,31 +55,33 @@ public class AnvilListener implements Listener {
             return;
         }
 
+        boolean isMain = type.equals("主强化");
+        int previewMain = isMain ? Math.min(data.mainLevel() + 1, 10) : data.mainLevel();
+        int previewBranch = (!isMain) ? Math.min(data.branchLevel() + 1, 6) : data.branchLevel();
+        EnhanceData previewData = new EnhanceData(previewMain, previewBranch, data.branchType());
+
         ItemStack preview = left.clone();
         ItemMeta previewMeta = preview.getItemMeta();
 
-        List<Component> lore = previewMeta.hasLore()
-                ? new ArrayList<>(previewMeta.lore())
-                : new ArrayList<>();
-
-        if (!lore.isEmpty()) {
-            lore.add(Component.empty());
-        }
+        List<Component> lore = new ArrayList<>();
         lore.add(Component.text("━━━━━━━━━━━━━━", NamedTextColor.DARK_GRAY));
         lore.add(Component.text("◆ " + type, NamedTextColor.GOLD, TextDecoration.BOLD));
-        lore.add(Component.text("消耗: 1x " + (hasDiamond ? "钻石" : "下界合金锭")
-                + " + " + GOLD_COST + " 金币", NamedTextColor.GREEN));
-        lore.add(Component.text("点击取出以执行强化", NamedTextColor.GRAY));
+        lore.add(Component.text("消耗: " + (hasDiamond ? "钻石" : "下界合金锭")
+                + " x1 + " + GOLD_COST + " 金币", NamedTextColor.GREEN));
+        lore.add(Component.text("点击取出以执行", NamedTextColor.GRAY));
 
         previewMeta.lore(lore);
         preview.setItemMeta(previewMeta);
         event.setResult(preview);
 
-        // Set XP cost so the output slot stays active
-        setRepairCost(event, 1);
+        if (event.getView() instanceof AnvilView view) {
+            view.setRepairCost(0);
+            view.setRepairItemCountCost(0);
+            view.bypassEnchantmentLevelRestriction(true);
+        }
     }
 
-    @EventHandler(priority = EventPriority.HIGH)
+    @EventHandler(priority = EventPriority.HIGHEST)
     public void onAnvilClick(InventoryClickEvent event) {
         if (event.getRawSlot() != 2) return;
         if (!(event.getInventory() instanceof AnvilInventory inv)) return;
@@ -86,8 +89,6 @@ public class AnvilListener implements Listener {
 
         ItemStack current = event.getCurrentItem();
         if (current == null || current.getType().isAir()) return;
-
-        event.setCancelled(true);
 
         ItemStack left = inv.getItem(0);
         ItemStack right = inv.getItem(1);
@@ -103,14 +104,16 @@ public class AnvilListener implements Listener {
         if (meta == null) return;
         EnhanceData data = PDCAdapter.readData(meta);
 
+        if (!isMainEnhancement(left, data, hasDiamond, hasIngot) &&
+            !isBranchEnhancement(left, data, hasDiamond, hasIngot)) return;
+
+        event.setCancelled(true);
+
         EnhanceResult result;
         if (isBranchEnhancement(left, data, hasDiamond, hasIngot)) {
             result = enhanceManager.performBranchEnhance(player, left, hasDiamond);
-        } else if (isMainEnhancement(left, data, hasDiamond, hasIngot)) {
-            result = enhanceManager.performMainEnhance(player, left, hasDiamond, hasIngot);
         } else {
-            player.sendMessage(Component.text("无法进行强化！", NamedTextColor.RED));
-            return;
+            result = enhanceManager.performMainEnhance(player, left, hasDiamond, hasIngot);
         }
 
         if (result.message() != null) {
@@ -119,43 +122,33 @@ public class AnvilListener implements Listener {
         }
 
         consumeMaterial(inv, hasDiamond, hasIngot);
-
         Location anvilLoc = inv.getLocation();
-        ItemStack resultItem = result.enhancedItem() != null
-                ? result.enhancedItem() : left;
+        ItemStack resultItem = result.enhancedItem() != null ? result.enhancedItem() : left;
 
-        // Clear all slots
         inv.setItem(0, null);
         inv.setItem(1, null);
         inv.setItem(2, null);
 
-        player.closeInventory();
-
         if (result.exploded() && anvilLoc != null) {
-            // Drop materials still in the anvil
+            player.closeInventory();
             if (resultItem != null) {
                 anvilLoc.getWorld().dropItemNaturally(anvilLoc, resultItem);
             }
             destroyAnvil(anvilLoc);
-        } else {
-            // Give to player
-            if (resultItem != null) {
-                var leftover = player.getInventory().addItem(resultItem);
-                if (!leftover.isEmpty()) {
-                    player.getWorld().dropItemNaturally(player.getLocation(), leftover.get(0));
-                }
+            return;
+        }
+
+        if (resultItem != null) {
+            var leftover = player.getInventory().addItem(resultItem);
+            if (!leftover.isEmpty()) {
+                player.getWorld().dropItemNaturally(player.getLocation(), leftover.get(0));
+                player.sendMessage(Component.text("背包已满，物品已掉落！", NamedTextColor.YELLOW));
             }
         }
 
+        EnhanceManager.syncInventory(player);
+        player.closeInventory();
         damageAnvil(anvilLoc);
-    }
-
-    private void setRepairCost(PrepareAnvilEvent event, int cost) {
-        try {
-            AnvilInventory inv = event.getInventory();
-            inv.getClass().getMethod("setRepairCost", int.class).invoke(inv, cost);
-        } catch (Exception ignored) {
-        }
     }
 
     private boolean isMainEnhancement(ItemStack item, EnhanceData data,
@@ -175,7 +168,6 @@ public class AnvilListener implements Listener {
     private void consumeMaterial(AnvilInventory inv, boolean hasDiamond, boolean hasIngot) {
         ItemStack right = inv.getItem(1);
         if (right == null) return;
-
         int amount = right.getAmount() - 1;
         if (amount <= 0) {
             inv.setItem(1, null);
@@ -189,27 +181,24 @@ public class AnvilListener implements Listener {
         if (block.getType().name().contains("ANVIL")) {
             block.getWorld().createExplosion(loc, 1.0f, false, false);
             block.setType(Material.AIR);
-            loc.getWorld().playSound(loc, org.bukkit.Sound.ENTITY_GENERIC_EXPLODE, 1.0f, 1.0f);
         }
     }
 
     private void damageAnvil(Location loc) {
         if (loc == null) return;
-        // Don't damage if already destroyed by explosion
         Block block = loc.getBlock();
-        if (block.getType() == Material.AIR) return;
+        Material type = block.getType();
+        if (type == Material.AIR) return;
 
-        Material next = switch (block.getType()) {
+        Material next = switch (type) {
             case ANVIL -> Material.CHIPPED_ANVIL;
             case CHIPPED_ANVIL -> Material.DAMAGED_ANVIL;
             default -> null;
         };
-
         if (next != null) {
             block.setType(next);
-        } else if (block.getType() == Material.DAMAGED_ANVIL) {
+        } else if (type == Material.DAMAGED_ANVIL) {
             block.setType(Material.AIR);
-            loc.getWorld().playSound(loc, org.bukkit.Sound.BLOCK_ANVIL_BREAK, 1.0f, 1.0f);
         }
     }
 }
