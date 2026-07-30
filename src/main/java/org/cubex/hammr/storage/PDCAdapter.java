@@ -15,6 +15,7 @@ public final class PDCAdapter {
 
     private static final NamespacedKey MAIN_KEY = key("enhance_main_level");
     private static final NamespacedKey BRANCHES_KEY = key("enhance_branches");
+    private static final NamespacedKey XP_KEY = key("enhance_xp_points");
 
     private static NamespacedKey key(String name) {
         return new NamespacedKey(HammrEnhance.getInstance(), name);
@@ -24,6 +25,7 @@ public final class PDCAdapter {
         PersistentDataContainer pdc = meta.getPersistentDataContainer();
         setInt(pdc, MAIN_KEY, data.mainLevel());
         setBranches(pdc, BRANCHES_KEY, data.branches());
+        setInt(pdc, XP_KEY, data.xpPoints());
     }
 
     @NotNull
@@ -31,7 +33,8 @@ public final class PDCAdapter {
         PersistentDataContainer pdc = meta.getPersistentDataContainer();
         int main = pdc.getOrDefault(MAIN_KEY, PersistentDataType.INTEGER, 0);
         Map<String, Integer> branches = getBranches(pdc, BRANCHES_KEY);
-        return new EnhanceData(main, branches);
+        int xp = pdc.getOrDefault(XP_KEY, PersistentDataType.INTEGER, 0);
+        return new EnhanceData(main, branches, xp);
     }
 
     public static boolean isEnhanced(@NotNull ItemMeta meta) {

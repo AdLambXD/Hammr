@@ -51,6 +51,10 @@ public class EnhanceManager {
             return EnhanceResult.error("金币不足！需要 " + GOLD_COST + " 金币。");
         }
 
+        if (!checkAndDeductXp(player, data)) {
+            return EnhanceResult.error("需要 " + data.xpRequired() + " 级经验值！");
+        }
+
         int rateIndex = Math.min(data.mainLevel(), MAIN_RATES.length - 1);
         boolean success = ThreadLocalRandom.current().nextInt(100) < MAIN_RATES[rateIndex];
 
@@ -81,7 +85,7 @@ public class EnhanceManager {
             }
         }
 
-        EnhanceData newData = new EnhanceData(newLevel, data.branches());
+        EnhanceData newData = new EnhanceData(newLevel, data.branches(), 0);
         PDCAdapter.writeData(meta, newData);
         meta.lore(LoreBuilder.buildLore(newData));
         item.setItemMeta(meta);
@@ -131,7 +135,7 @@ public class EnhanceManager {
                 }
             }
 
-            EnhanceData newData = new EnhanceData(newMain, data.branches());
+            EnhanceData newData = new EnhanceData(newMain, data.branches(), data.xpPoints());
             PDCAdapter.writeData(meta, newData);
             meta.lore(LoreBuilder.buildLore(newData));
         }
@@ -261,6 +265,15 @@ public class EnhanceManager {
         }
     }
 
+    private boolean checkAndDeductXp(Player player, EnhanceData data) {
+        int req = data.xpRequired();
+        if (req <= 0) return true;
+        if (data.xpPoints() >= req) return true;
+        if (player.getLevel() < req) return false;
+        player.setLevel(player.getLevel() - req);
+        return true;
+    }
+
     private boolean checkAndDeductGold(Player player) {
         var eco = HammrEnhance.getInstance().getEconomyManager();
         if (!eco.isEnabled()) return true;
@@ -334,13 +347,28 @@ public class EnhanceManager {
 
         if (actualMainLevel == 0 && actualBranches.isEmpty()) return;
 
-        EnhanceData actualData = new EnhanceData(actualMainLevel, actualBranches);
         EnhanceData storedData = PDCAdapter.readData(meta);
+        EnhanceData actualData = new EnhanceData(actualMainLevel, actualBranches, storedData.xpPoints());
 
         if (!actualData.equals(storedData)) {
             PDCAdapter.writeData(meta, actualData);
         }
         meta.lore(LoreBuilder.buildLore(actualData));
+        item.setItemMeta(meta);
+    }
+
+    public static void addItemXp(ItemStack item, int amount) {
+        ItemMeta meta = item.getItemMeta();
+        if (meta == null) return;
+        EnhanceData data = PDCAdapter.readData(meta);
+        if (!data.hasMain() && !data.hasBranch()) return;
+        int req = data.xpRequired();
+        if (req <= 0) return;
+        int newXp = Math.min(data.xpPoints() + amount, req);
+        if (newXp == data.xpPoints()) return;
+        EnhanceData newData = data.withXP(newXp);
+        PDCAdapter.writeData(meta, newData);
+        meta.lore(LoreBuilder.buildLore(newData));
         item.setItemMeta(meta);
     }
 
