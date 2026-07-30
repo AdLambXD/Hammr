@@ -5,17 +5,21 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.inventory.ClickType;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.PrepareAnvilEvent;
 import org.bukkit.inventory.AnvilInventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.view.AnvilView;
+import org.bukkit.persistence.PersistentDataType;
+import org.cubex.hammr.HammrEnhance;
 import org.cubex.hammr.enhancement.EnhanceManager;
 import org.cubex.hammr.enhancement.EnhanceResult;
 import org.cubex.hammr.storage.EnhanceData;
@@ -23,9 +27,11 @@ import org.cubex.hammr.storage.PDCAdapter;
 import org.cubex.hammr.util.ItemChecker;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class AnvilListener implements Listener {
 
+    private static final NamespacedKey PREVIEW_KEY = new NamespacedKey(HammrEnhance.getInstance(), "preview");
     private static final int GOLD_COST = 1000;
     private final EnhanceManager enhanceManager = new EnhanceManager();
 
@@ -37,8 +43,9 @@ public class AnvilListener implements Listener {
 
         if (!ItemChecker.isNetheriteEquipment(left)) return;
 
-        if (right == null || right.getType().isAir()
-                || (!ItemChecker.isDiamond(right) && !ItemChecker.isNetheriteIngot(right))) {
+        if (right == null || right.getType().isAir()) return;
+
+        if (!ItemChecker.isDiamond(right) && !ItemChecker.isNetheriteIngot(right)) {
             event.setResult(null);
             return;
         }
@@ -68,12 +75,13 @@ public class AnvilListener implements Listener {
         lore.add(Component.text("点击取出以执行", NamedTextColor.GRAY));
 
         previewMeta.lore(lore);
+        previewMeta.getPersistentDataContainer().set(PREVIEW_KEY, PersistentDataType.BOOLEAN, true);
         preview.setItemMeta(previewMeta);
         event.setResult(preview);
 
         if (event.getView() instanceof AnvilView view) {
             view.setRepairCost(0);
-            view.setRepairItemCountCost(0);
+            view.setRepairItemCountCost(1);
             view.bypassEnchantmentLevelRestriction(true);
         }
     }
@@ -90,6 +98,12 @@ public class AnvilListener implements Listener {
         ItemStack left = inv.getItem(0);
         ItemStack right = inv.getItem(1);
 
+        // Cancel stale preview clicks
+        if (isHammrPreview(current) && !isValidEnhancementContext(left, right)) {
+            event.setCancelled(true);
+            return;
+        }
+
         if (!ItemChecker.isNetheriteEquipment(left)) return;
         if (right == null || right.getType().isAir()) return;
 
@@ -104,6 +118,8 @@ public class AnvilListener implements Listener {
         if (!isMainEnhancement(left, data, hasDiamond, hasIngot) &&
             !isBranchEnhancement(left, data, hasDiamond, hasIngot)) return;
 
+        event.setCancelled(true);
+
         EnhanceResult result;
         if (isBranchEnhancement(left, data, hasDiamond, hasIngot)) {
             result = enhanceManager.performBranchEnhance(player, left, hasDiamond);
@@ -112,7 +128,6 @@ public class AnvilListener implements Listener {
         }
 
         if (result.message() != null) {
-            event.setCancelled(true);
             player.sendMessage(Component.text(result.message(), NamedTextColor.RED));
             return;
         }
@@ -121,7 +136,6 @@ public class AnvilListener implements Listener {
         ItemStack resultItem = result.enhancedItem() != null ? result.enhancedItem() : left;
 
         if (result.exploded() && anvilLoc != null) {
-            event.setCancelled(true);
             player.closeInventory();
             if (resultItem != null) {
                 anvilLoc.getWorld().dropItemNaturally(anvilLoc, resultItem);
@@ -130,7 +144,26 @@ public class AnvilListener implements Listener {
             return;
         }
 
-        event.setCurrentItem(resultItem);
+        // Consume materials
+        inv.setItem(0, null);
+        if (right.getAmount() > 1) {
+            right.setAmount(right.getAmount() - 1);
+            inv.setItem(1, right);
+        } else {
+            inv.setItem(1, null);
+        }
+
+        // Give result to player
+        boolean shift = event.getClick() == ClickType.SHIFT_LEFT || event.getClick() == ClickType.SHIFT_RIGHT;
+        if (shift) {
+            Map<Integer, ItemStack> remaining = player.getInventory().addItem(resultItem);
+            if (!remaining.isEmpty()) {
+                player.getWorld().dropItem(player.getLocation(), resultItem);
+            }
+        } else {
+            player.setItemOnCursor(resultItem);
+        }
+
         EnhanceManager.syncInventory(player);
     }
 
@@ -146,6 +179,24 @@ public class AnvilListener implements Listener {
         if (!hasDiamond) return false;
         if (!ItemChecker.hasBranchPool(item)) return false;
         return data.canBranch();
+    }
+
+    private boolean isHammrPreview(ItemStack item) {
+        return item.hasItemMeta()
+                && item.getItemMeta().getPersistentDataContainer().has(PREVIEW_KEY, PersistentDataType.BOOLEAN);
+    }
+
+    private boolean isValidEnhancementContext(ItemStack left, ItemStack right) {
+        if (!ItemChecker.isNetheriteEquipment(left)) return false;
+        if (right == null || right.getType().isAir()) return false;
+        boolean hasDiamond = ItemChecker.isDiamond(right);
+        boolean hasIngot = ItemChecker.isNetheriteIngot(right);
+        if (!hasDiamond && !hasIngot) return false;
+        ItemMeta meta = left.getItemMeta();
+        if (meta == null) return false;
+        EnhanceData data = PDCAdapter.readData(meta);
+        return isMainEnhancement(left, data, hasDiamond, hasIngot)
+                || isBranchEnhancement(left, data, hasDiamond, hasIngot);
     }
 
     private void destroyAnvil(Location loc) {

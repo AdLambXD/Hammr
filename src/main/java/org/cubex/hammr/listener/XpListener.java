@@ -9,7 +9,6 @@ import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.player.PlayerExpChangeEvent;
 import org.bukkit.inventory.ItemStack;
 import org.cubex.hammr.enhancement.EnhanceManager;
-import org.cubex.hammr.util.ItemChecker;
 
 public class XpListener implements Listener {
 
