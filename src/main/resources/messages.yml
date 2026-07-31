@@ -1,0 +1,97 @@
+# ============================================
+# HammrEnhance - 语言文件 / Language File
+# ============================================
+
+# 错误提示
+error:
+  meta-null: "物品数据异常"
+  main-maxed: "主强化已达最高等级！"
+  need-ingot: "需要下界合金锭！"
+  need-diamond: "需要钻石！"
+  insufficient-gold: "金币不足！需要 {0} 金币。"
+  insufficient-xp: "需要 {0} 级经验值！"
+  low-main-for-branch: "主强化需达到 {0} 级才可进行分支强化！"
+  branch-maxed: "分支强化已达最高等级！"
+  no-branch-pool: "该装备无法进行分支强化！"
+  empty-pool: "分支池为空！"
+  all-branches-maxed: "所有分支已达最高等级！"
+
+# ActionBar 消息
+actionbar:
+  main-success: "✦ 强化成功！当前等级: +{0}"
+  main-failure: "✘ 强化失败"
+  main-level-down: "，等级降为 +{0}"
+  main-explode: "，铁砧爆炸！"
+  branch-success: "✦ 分支强化成功！{0}"
+  branch-failure: "✘ 分支强化失败"
+  branch-explode: "，铁砧爆炸！"
+
+# 物品名称
+item-name:
+  NETHERITE_SWORD: "下界合金剑"
+  NETHERITE_AXE: "下界合金斧"
+  NETHERITE_PICKAXE: "下界合金镐"
+  NETHERITE_SHOVEL: "下界合金锹"
+  NETHERITE_HOE: "下界合金锄"
+  NETHERITE_HELMET: "下界合金头盔"
+  NETHERITE_CHESTPLATE: "下界合金胸甲"
+  NETHERITE_LEGGINGS: "下界合金护腿"
+  NETHERITE_BOOTS: "下界合金靴子"
+
+# 材料名称
+material-name:
+  DIAMOND: "钻石"
+  NETHERITE_INGOT: "下界合金锭"
+
+# 附魔显示名称
+enchant-name:
+  sharpness: "锋利"
+  efficiency: "效率"
+  protection: "保护"
+  fire_aspect: "火焰附加"
+  bane_of_arthropods: "节肢杀手"
+  smite: "亡灵杀手"
+  projectile_protection: "弹射物保护"
+  fire_protection: "火焰保护"
+  blast_protection: "爆炸保护"
+
+# 预览铁砧界面的 Lore
+preview:
+  separator: "━━━━━━━━━━━━━━"
+  title-main: "◆ 主强化"
+  title-branch: "◆ 分支强化"
+  cost: "消耗: {0} x1 + {1} 金币"
+  instruction: "点击取出以执行"
+
+# 命令系统
+command:
+  player-only: "只有玩家可以使用此命令。"
+  usage-set: "用法: /hammr set <主等级> [分支类型] [分支等级]"
+  usage-give: "用法: /hammr give <玩家> <主等级> [分支类型] [分支等级]"
+  need-item: "请手持一件下界合金装备。"
+  not-enhanceable: "该物品不是可强化的下界合金装备。"
+  invalid-main-level: "主等级必须为数字 (0-{0})。"
+  main-level-range: "主等级范围为 0-{0}。"
+  invalid-branch-type: "无效的分支类型。"
+  invalid-branch-level: "分支等级必须为数字 (0-{0})。"
+  branch-level-range: "分支等级范围为 0-{0}。"
+  no-branch-available: "该装备没有可用的分支类型。"
+  set-success: "已设置强化: 主={0}{1}"
+  remove-no-item: "请手持一件物品。"
+  remove-no-data: "该物品没有强化数据。"
+  remove-success: "已移除所有强化。"
+  give-player-offline: "玩家 {0} 不在线。"
+  give-success: "已给予 {0} 强化装备。"
+  give-need-template: "请手持一个样板装备来给予。"
+  reload-success: "配置已重新加载。"
+  help-header: "§6===== HammrEnhance 管理命令 ====="
+  help-set: "§e/hammr set <主等级> [分支类型] [分支等级] §7- 设置手持物品的强化"
+  help-remove: "§e/hammr remove §7- 移除手持物品的所有强化"
+  help-give: "§e/hammr give <玩家> <主等级> [分支类型] [分支等级] §7- 给予强化装备"
+  help-reload: "§e/hammr reload §7- 重新加载配置"
+
+# 控制台日志
+log:
+  vault-not-found: "Vault not found — gold costs will be skipped."
+  enabled: "HammrEnhance enabled."
+  disabled: "HammrEnhance disabled."

@@ -17,3 +17,5 @@
 !gradle/
 !gradle/wrapper/
 !gradle/wrapper/gradle-wrapper.properties
+!.github/
+!.github/**

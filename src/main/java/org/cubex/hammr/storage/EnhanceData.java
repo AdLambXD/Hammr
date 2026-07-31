@@ -1,5 +1,7 @@
 package org.cubex.hammr.storage;
 
+import org.cubex.hammr.HammrEnhance;
+
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -25,7 +27,7 @@ public record EnhanceData(int mainLevel, Map<String, Integer> branches, int xpPo
     }
 
     public int xpRequired() {
-        return mainLevel * 50;
+        return HammrEnhance.getInstance().getSettings().getXpRequired(mainLevel);
     }
 
     public double xpProgress() {
@@ -52,7 +54,7 @@ public record EnhanceData(int mainLevel, Map<String, Integer> branches, int xpPo
     }
 
     public boolean isMainMaxed() {
-        return mainLevel >= 10;
+        return mainLevel >= HammrEnhance.getInstance().getSettings().getMainMaxLevel();
     }
 
     public boolean hasBranch() {
@@ -60,11 +62,12 @@ public record EnhanceData(int mainLevel, Map<String, Integer> branches, int xpPo
     }
 
     public boolean isBranchMaxed() {
-        return branchLevel() >= 6;
+        return branchLevel() >= HammrEnhance.getInstance().getSettings().getBranchMaxLevel();
     }
 
     public boolean canBranch() {
-        return mainLevel >= 8 && branchLevel() < 6;
+        var s = HammrEnhance.getInstance().getSettings();
+        return mainLevel >= s.getBranchMinMainLevel() && branchLevel() < s.getBranchMaxLevel();
     }
 
     public EnhanceData withXP(int newXp) {

@@ -8,6 +8,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.player.PlayerExpChangeEvent;
 import org.bukkit.inventory.ItemStack;
+import org.cubex.hammr.HammrEnhance;
 import org.cubex.hammr.enhancement.EnhanceManager;
 
 public class XpListener implements Listener {
@@ -17,15 +18,17 @@ public class XpListener implements Listener {
         Player player = event.getPlayer();
         int amount = event.getAmount();
         if (amount <= 0) return;
+        int xp = HammrEnhance.getInstance().getSettings().getXpFromExpOrb();
+        if (xp <= 0) return;
 
         ItemStack main = player.getInventory().getItemInMainHand();
         if (main.getType() != Material.AIR) {
-            EnhanceManager.addItemXp(main, amount);
+            EnhanceManager.addItemXp(main, xp);
         }
 
         ItemStack off = player.getInventory().getItemInOffHand();
         if (off.getType() != Material.AIR) {
-            EnhanceManager.addItemXp(off, amount);
+            EnhanceManager.addItemXp(off, xp);
         }
     }
 
@@ -40,6 +43,9 @@ public class XpListener implements Listener {
                 || type.name().contains("_SHOVEL") || type.name().contains("_HOE");
         if (!isTool) return;
 
-        EnhanceManager.addItemXp(item, 1);
+        int xp = HammrEnhance.getInstance().getSettings().getBlockBreakXp();
+        if (xp > 0) {
+            EnhanceManager.addItemXp(item, xp);
+        }
     }
 }

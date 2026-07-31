@@ -20,6 +20,8 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.view.AnvilView;
 import org.bukkit.persistence.PersistentDataType;
 import org.cubex.hammr.HammrEnhance;
+import org.cubex.hammr.config.ConfigSettings;
+import org.cubex.hammr.config.MessageProvider;
 import org.cubex.hammr.enhancement.EnhanceManager;
 import org.cubex.hammr.enhancement.EnhanceResult;
 import org.cubex.hammr.storage.EnhanceData;
@@ -32,8 +34,11 @@ import java.util.Map;
 public class AnvilListener implements Listener {
 
     private static final NamespacedKey PREVIEW_KEY = new NamespacedKey(HammrEnhance.getInstance(), "preview");
-    private static final int GOLD_COST = 1000;
     private final EnhanceManager enhanceManager = new EnhanceManager();
+
+    private MessageProvider msg() {
+        return HammrEnhance.getInstance().getMessages();
+    }
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onPrepareAnvil(PrepareAnvilEvent event) {
@@ -67,12 +72,14 @@ public class AnvilListener implements Listener {
         ItemStack preview = left.clone();
         ItemMeta previewMeta = preview.getItemMeta();
 
+        int cost = HammrEnhance.getInstance().getSettings().getCostGold();
+        String materialName = msg().get(hasIngot ? "material-name.NETHERITE_INGOT" : "material-name.DIAMOND");
+
         List<Component> lore = new ArrayList<>();
-        lore.add(Component.text("━━━━━━━━━━━━━━", NamedTextColor.DARK_GRAY));
-        lore.add(Component.text("◆ " + (isMain ? "主强化" : "分支强化"), NamedTextColor.GOLD, TextDecoration.BOLD));
-        lore.add(Component.text("消耗: " + (hasDiamond ? "钻石" : "下界合金锭")
-                + " x1 + " + GOLD_COST + " 金币", NamedTextColor.GREEN));
-        lore.add(Component.text("点击取出以执行", NamedTextColor.GRAY));
+        lore.add(Component.text(msg().get("preview.separator"), NamedTextColor.DARK_GRAY));
+        lore.add(Component.text(msg().get(isMain ? "preview.title-main" : "preview.title-branch"), NamedTextColor.GOLD, TextDecoration.BOLD));
+        lore.add(Component.text(msg().get("preview.cost", materialName, cost), NamedTextColor.GREEN));
+        lore.add(Component.text(msg().get("preview.instruction"), NamedTextColor.GRAY));
 
         previewMeta.lore(lore);
         previewMeta.getPersistentDataContainer().set(PREVIEW_KEY, PersistentDataType.BOOLEAN, true);
@@ -170,12 +177,13 @@ public class AnvilListener implements Listener {
     private boolean isMainEnhancement(ItemStack item, EnhanceData data,
                                        boolean hasDiamond, boolean hasIngot) {
         if (data.isMainMaxed()) return false;
-        if (data.mainLevel() < 6 && hasDiamond) return true;
-        return data.mainLevel() >= 6 && hasIngot;
+        int threshold = HammrEnhance.getInstance().getSettings().getMainMaterialThreshold();
+        if (data.mainLevel() < threshold && hasDiamond) return true;
+        return data.mainLevel() >= threshold && hasIngot;
     }
 
     private boolean isBranchEnhancement(ItemStack item, EnhanceData data,
-                                         boolean hasDiamond, boolean hasIngot) {
+                                          boolean hasDiamond, boolean hasIngot) {
         if (!hasDiamond) return false;
         if (!ItemChecker.hasBranchPool(item)) return false;
         return data.canBranch();

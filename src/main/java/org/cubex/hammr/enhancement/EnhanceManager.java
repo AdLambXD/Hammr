@@ -9,6 +9,8 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.cubex.hammr.HammrEnhance;
+import org.cubex.hammr.config.ConfigSettings;
+import org.cubex.hammr.config.MessageProvider;
 import org.cubex.hammr.storage.EnhanceData;
 import org.cubex.hammr.storage.PDCAdapter;
 import org.cubex.hammr.util.ItemChecker;
@@ -22,41 +24,43 @@ import java.util.concurrent.ThreadLocalRandom;
 
 public class EnhanceManager {
 
-    private static final int[] MAIN_RATES = {95, 95, 95, 95, 95, 85, 75, 60, 40, 20};
-    private static final int[] BRANCH_RATES = {40, 35, 25, 15, 10};
-    private static final int GOLD_COST = 1000;
-    private static final double LEVEL_DOWN_CHANCE = 0.25;
-    private static final double EXPLOSION_CHANCE = 0.10;
+    private ConfigSettings cfg() {
+        return HammrEnhance.getInstance().getSettings();
+    }
+
+    private MessageProvider msg() {
+        return HammrEnhance.getInstance().getMessages();
+    }
 
     public EnhanceResult performMainEnhance(Player player, ItemStack item,
                                              boolean hasDiamond, boolean hasIngot) {
         ItemMeta meta = item.getItemMeta();
-        if (meta == null) return EnhanceResult.error("物品数据异常");
+        if (meta == null) return EnhanceResult.error(msg().get("error.meta-null"));
 
         EnhanceData data = PDCAdapter.readData(meta);
 
         if (data.isMainMaxed()) {
-            return EnhanceResult.error("主强化已达最高等级！");
+            return EnhanceResult.error(msg().get("error.main-maxed"));
         }
 
-        boolean needsIngot = data.mainLevel() >= 6;
+        boolean needsIngot = data.mainLevel() >= cfg().getMainMaterialThreshold();
         if (needsIngot && !hasIngot) {
-            return EnhanceResult.error("需要下界合金锭！");
+            return EnhanceResult.error(msg().get("error.need-ingot"));
         }
         if (!needsIngot && !hasDiamond) {
-            return EnhanceResult.error("需要钻石！");
+            return EnhanceResult.error(msg().get("error.need-diamond"));
         }
 
-        if (!checkAndDeductGold(player)) {
-            return EnhanceResult.error("金币不足！需要 " + GOLD_COST + " 金币。");
+        if (!checkAndDeductGold(player, data.mainLevel())) {
+            return EnhanceResult.error(msg().get("error.insufficient-gold", cfg().getCostGold(data.mainLevel())));
         }
 
         if (!checkAndDeductXp(player, data)) {
-            return EnhanceResult.error("需要 " + data.xpRequired() + " 级经验值！");
+            return EnhanceResult.error(msg().get("error.insufficient-xp", data.xpRequired()));
         }
 
-        int rateIndex = Math.min(data.mainLevel(), MAIN_RATES.length - 1);
-        boolean success = ThreadLocalRandom.current().nextInt(100) < MAIN_RATES[rateIndex];
+        int rateIndex = Math.min(data.mainLevel(), cfg().getMainSuccessRates().length - 1);
+        boolean success = ThreadLocalRandom.current().nextInt(100) < cfg().getMainSuccessRate(data.mainLevel());
 
         ItemStack result = item.clone();
         ItemMeta resultMeta = result.getItemMeta();
@@ -90,23 +94,22 @@ public class EnhanceManager {
         meta.lore(LoreBuilder.buildLore(newData));
         item.setItemMeta(meta);
 
-        player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.0f);
+        if (cfg().isSoundEnabled()) {
+            player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.0f);
+        }
 
-        if (newLevel >= 10) {
+        if (newLevel >= cfg().getMainMaxLevel()) {
             broadcastAnnouncement(player, item);
         }
 
-        sendActionBar(player, Component.text()
-                .append(Component.text("✦ 强化成功！当前等级: +", NamedTextColor.GREEN))
-                .append(Component.text(String.valueOf(newLevel), NamedTextColor.GREEN, TextDecoration.BOLD))
-                .build());
+        sendActionBar(player, msg().getComponent("actionbar.main-success", NamedTextColor.GREEN, TextDecoration.BOLD, String.valueOf(newLevel)));
         return EnhanceResult.success(item, newLevel, data.branchLevel());
     }
 
     private EnhanceResult applyMainFailure(Player player, ItemStack item,
                                            ItemMeta meta, EnhanceData data, String material) {
-        boolean levelDown = ThreadLocalRandom.current().nextDouble() < LEVEL_DOWN_CHANCE;
-        boolean explode = ThreadLocalRandom.current().nextDouble() < EXPLOSION_CHANCE;
+        boolean levelDown = ThreadLocalRandom.current().nextDouble() < cfg().getLevelDownChance();
+        boolean explode = ThreadLocalRandom.current().nextDouble() < cfg().getExplosionChance();
 
         int newMain = data.mainLevel();
         if (levelDown) {
@@ -141,15 +144,16 @@ public class EnhanceManager {
         }
 
         item.setItemMeta(meta);
-        player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f);
+        if (cfg().isSoundEnabled()) {
+            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f);
+        }
 
-        Component failMsg = Component.text("✘ 强化失败", NamedTextColor.RED);
+        Component failMsg = msg().getComponent("actionbar.main-failure", NamedTextColor.RED);
         if (levelDown) {
-            failMsg = failMsg.append(Component.text("，等级降为 +", NamedTextColor.RED))
-                    .append(Component.text(String.valueOf(newMain), NamedTextColor.RED, TextDecoration.BOLD));
+            failMsg = failMsg.append(msg().getComponent("actionbar.main-level-down", NamedTextColor.RED, String.valueOf(newMain)));
         }
         if (explode) {
-            failMsg = failMsg.append(Component.text("，铁砧爆炸！", NamedTextColor.RED));
+            failMsg = failMsg.append(msg().getComponent("actionbar.main-explode", NamedTextColor.RED));
         }
         sendActionBar(player, failMsg);
 
@@ -158,30 +162,31 @@ public class EnhanceManager {
 
     public EnhanceResult performBranchEnhance(Player player, ItemStack item, boolean hasDiamond) {
         ItemMeta meta = item.getItemMeta();
-        if (meta == null) return EnhanceResult.error("物品数据异常");
+        if (meta == null) return EnhanceResult.error(msg().get("error.meta-null"));
 
         EnhanceData data = PDCAdapter.readData(meta);
 
-        if (data.mainLevel() < 8) {
-            return EnhanceResult.error("主强化需达到 8 级才可进行分支强化！");
+        int reqMainLevel = cfg().getBranchMinMainLevel();
+        if (data.mainLevel() < reqMainLevel) {
+            return EnhanceResult.error(msg().get("error.low-main-for-branch", reqMainLevel));
         }
         if (data.isBranchMaxed()) {
-            return EnhanceResult.error("分支强化已达最高等级！");
+            return EnhanceResult.error(msg().get("error.branch-maxed"));
         }
         if (!hasDiamond) {
-            return EnhanceResult.error("需要钻石！");
+            return EnhanceResult.error(msg().get("error.need-diamond"));
         }
-        if (!checkAndDeductGold(player)) {
-            return EnhanceResult.error("金币不足！需要 " + GOLD_COST + " 金币。");
+        if (!checkAndDeductGold(player, data.mainLevel())) {
+            return EnhanceResult.error(msg().get("error.insufficient-gold", cfg().getCostGold(data.mainLevel())));
         }
 
         String equipType = ItemChecker.getEquipType(item);
         if (!BranchPool.hasPool(equipType)) {
-            return EnhanceResult.error("该装备无法进行分支强化！");
+            return EnhanceResult.error(msg().get("error.no-branch-pool"));
         }
 
-        int rateIndex = Math.min(data.branchCount(), BRANCH_RATES.length - 1);
-        boolean success = ThreadLocalRandom.current().nextInt(100) < BRANCH_RATES[rateIndex];
+        int rateIndex = Math.min(data.branchCount(), cfg().getBranchSuccessRates().length - 1);
+        boolean success = ThreadLocalRandom.current().nextInt(100) < cfg().getBranchSuccessRate(data.branchCount());
 
         ItemStack result = item.clone();
         ItemMeta resultMeta = result.getItemMeta();
@@ -197,17 +202,18 @@ public class EnhanceManager {
                                              ItemMeta meta, EnhanceData data, String equipType) {
         List<String> pool = BranchPool.getPoolKeys(equipType);
         if (pool == null || pool.isEmpty()) {
-            return EnhanceResult.error("分支池为空！");
+            return EnhanceResult.error(msg().get("error.empty-pool"));
         }
 
+        int branchMaxLevel = cfg().getBranchMaxLevel();
         List<String> available = new ArrayList<>();
         for (String key : pool) {
-            if (data.branches().getOrDefault(key, 0) < 6) {
+            if (data.branches().getOrDefault(key, 0) < branchMaxLevel) {
                 available.add(key);
             }
         }
         if (available.isEmpty()) {
-            return EnhanceResult.error("所有分支已达最高等级！");
+            return EnhanceResult.error(msg().get("error.all-branches-maxed"));
         }
         String branchType = available.get(ThreadLocalRandom.current().nextInt(available.size()));
 
@@ -231,26 +237,27 @@ public class EnhanceManager {
         meta.lore(LoreBuilder.buildLore(newData));
         item.setItemMeta(meta);
 
-        player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.0f);
+        if (cfg().isSoundEnabled()) {
+            player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.0f);
+        }
 
         String enchName = LoreBuilder.getEnchantDisplayName(newEnch);
-        sendActionBar(player, Component.text()
-                .append(Component.text("✦ 分支强化成功！", NamedTextColor.GREEN))
-                .append(Component.text(enchName + " " + RomanNumber.toRoman(newLevel), NamedTextColor.GREEN, TextDecoration.BOLD))
-                .build());
+        sendActionBar(player, msg().getComponent("actionbar.branch-success", NamedTextColor.GREEN, enchName + " " + RomanNumber.toRoman(newLevel)));
         return EnhanceResult.success(item, data.mainLevel(), newData.branchLevel());
     }
 
     private EnhanceResult applyBranchFailure(Player player, ItemStack item,
                                              ItemMeta meta, EnhanceData data) {
-        boolean explode = ThreadLocalRandom.current().nextDouble() < EXPLOSION_CHANCE;
+        boolean explode = ThreadLocalRandom.current().nextDouble() < cfg().getExplosionChance();
         item.setItemMeta(meta);
 
-        player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f);
+        if (cfg().isSoundEnabled()) {
+            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f);
+        }
 
-        Component brFailMsg = Component.text("✘ 分支强化失败", NamedTextColor.RED);
+        Component brFailMsg = msg().getComponent("actionbar.branch-failure", NamedTextColor.RED);
         if (explode) {
-            brFailMsg = brFailMsg.append(Component.text("，铁砧爆炸！", NamedTextColor.RED));
+            brFailMsg = brFailMsg.append(msg().getComponent("actionbar.branch-explode", NamedTextColor.RED));
         }
         sendActionBar(player, brFailMsg);
 
@@ -274,38 +281,42 @@ public class EnhanceManager {
         return true;
     }
 
-    private boolean checkAndDeductGold(Player player) {
+    private boolean checkAndDeductGold(Player player, int level) {
         var eco = HammrEnhance.getInstance().getEconomyManager();
         if (!eco.isEnabled()) return true;
-        if (!eco.hasBalance(player, GOLD_COST)) return false;
-        eco.withdraw(player, GOLD_COST);
+        int cost = cfg().getCostGold(level);
+        if (!eco.hasBalance(player, cost)) return false;
+        eco.withdraw(player, cost);
         return true;
     }
 
     private void broadcastAnnouncement(Player player, ItemStack item) {
-        var msg = Component.text()
+        if (!cfg().isBroadcastOnMaxLevel()) return;
+        int maxLevel = cfg().getMainMaxLevel();
+        Component msg = Component.text()
                 .append(Component.text("[!] ", NamedTextColor.GOLD, TextDecoration.BOLD))
                 .append(Component.text(player.getName(), NamedTextColor.YELLOW))
                 .append(Component.text(" 成功将 ", NamedTextColor.GREEN))
                 .append(Component.text(getItemSimpleName(item), NamedTextColor.WHITE))
                 .append(Component.text(" 强化至 ", NamedTextColor.GREEN))
-                .append(Component.text("+10", NamedTextColor.GOLD, TextDecoration.BOLD))
+                .append(Component.text("+" + maxLevel, NamedTextColor.GOLD, TextDecoration.BOLD))
                 .append(Component.text("！", NamedTextColor.GREEN))
                 .build();
         HammrEnhance.getInstance().getServer().broadcast(msg);
     }
 
     private String getItemSimpleName(ItemStack item) {
+        var msg = msg();
         return switch (item.getType()) {
-            case NETHERITE_SWORD -> "下界合金剑";
-            case NETHERITE_AXE -> "下界合金斧";
-            case NETHERITE_PICKAXE -> "下界合金镐";
-            case NETHERITE_SHOVEL -> "下界合金锹";
-            case NETHERITE_HOE -> "下界合金锄";
-            case NETHERITE_HELMET -> "下界合金头盔";
-            case NETHERITE_CHESTPLATE -> "下界合金胸甲";
-            case NETHERITE_LEGGINGS -> "下界合金护腿";
-            case NETHERITE_BOOTS -> "下界合金靴子";
+            case NETHERITE_SWORD -> msg.get("item-name.NETHERITE_SWORD");
+            case NETHERITE_AXE -> msg.get("item-name.NETHERITE_AXE");
+            case NETHERITE_PICKAXE -> msg.get("item-name.NETHERITE_PICKAXE");
+            case NETHERITE_SHOVEL -> msg.get("item-name.NETHERITE_SHOVEL");
+            case NETHERITE_HOE -> msg.get("item-name.NETHERITE_HOE");
+            case NETHERITE_HELMET -> msg.get("item-name.NETHERITE_HELMET");
+            case NETHERITE_CHESTPLATE -> msg.get("item-name.NETHERITE_CHESTPLATE");
+            case NETHERITE_LEGGINGS -> msg.get("item-name.NETHERITE_LEGGINGS");
+            case NETHERITE_BOOTS -> msg.get("item-name.NETHERITE_BOOTS");
             default -> item.getType().name();
         };
     }
@@ -373,14 +384,16 @@ public class EnhanceManager {
     }
 
     public static int getMainSuccessRate(int level) {
-        if (level < 1) return MAIN_RATES[0];
-        if (level >= MAIN_RATES.length) return MAIN_RATES[MAIN_RATES.length - 1];
-        return MAIN_RATES[level - 1];
+        var settings = HammrEnhance.getInstance().getSettings();
+        if (level < 1) return settings.getMainSuccessRates()[0];
+        if (level >= settings.getMainSuccessRates().length) return settings.getMainSuccessRates()[settings.getMainSuccessRates().length - 1];
+        return settings.getMainSuccessRate(level);
     }
 
     public static int getBranchSuccessRate(int level) {
-        if (level < 1) return BRANCH_RATES[0];
-        if (level >= BRANCH_RATES.length) return BRANCH_RATES[BRANCH_RATES.length - 1];
-        return BRANCH_RATES[level - 1];
+        var settings = HammrEnhance.getInstance().getSettings();
+        if (level < 1) return settings.getBranchSuccessRates()[0];
+        if (level >= settings.getBranchSuccessRates().length) return settings.getBranchSuccessRates()[settings.getBranchSuccessRates().length - 1];
+        return settings.getBranchSuccessRate(level);
     }
 }

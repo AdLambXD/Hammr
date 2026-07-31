@@ -2,23 +2,126 @@
 # HammrEnhance - 下界合金装备强化系统 配置
 # ============================================
 
-# 主强化成功率 (%) - 顺序: 1→2, 2→3, ..., 9→10
-main-success-rates: [90, 85, 80, 75, 60, 50, 30, 25, 10]
+# 主强化各等级成功率 (%) - 按等级顺序
+# 例如: 第1个值表示从+1强化到+2的成功率, 第2个值表示+2→+3, 以此类推
+main-success-rates: [95, 95, 95, 95, 95, 85, 75, 60, 40, 20]
 
-# 分支强化成功率 (%) - 顺序: 1→2, 2→3, ..., 5→6
+# 分支强化各等级成功率 (%) - 按等级顺序
 branch-success-rates: [40, 35, 25, 15, 10]
 
-# 每次强化消耗金币
+# 主强化最高等级 (默认: 10)
+main-max-level: 10
+
+# 分支强化最高总等级 (默认: 6)
+branch-max-level: 6
+
+# 分支强化所需最低主等级 (默认: 8)
+branch-min-main-level: 8
+
+# 每次强化消耗金币 (当 cost-gold-per-level 为空时使用此值)
 cost-gold: 1000
 
+# 按等级的金币消耗 (优先级高于 cost-gold)
+# 如果为空列表则使用 cost-gold 的固定值
+# 格式示例:
+#   cost-gold-per-level: [500, 800, 1000, 1500, 2000, 2500, 3000, 4000, 5000, 8000]
+cost-gold-per-level: []
+
 # 失败掉级概率 (0.0 - 1.0)
-level-down-chance: 0.7
+level-down-chance: 0.25
 
 # 铁砧爆炸概率 (0.0 - 1.0)
-explosion-chance: 0.15
+explosion-chance: 0.10
+
+# 铁砧爆炸半径 (默认: 1.0)
+explosion-radius: 1.0
+
+# 经验值倍率 - 每级主强化所需经验 = 主等级 × 倍率 (默认: 50)
+xp-multiplier: 50
+
+# 挖掘方块时获得的物品经验值 (默认: 1)
+block-break-xp: 1
+
+# 获得经验球时转化的物品经验值 (默认: 1)
+xp-from-exp-orb: 1
+
+# 最高级强化达成时是否全服公告
+broadcast-on-max-level: true
+
+# 是否播放音效
+sound-enabled: true
+
+# 主强化材料切换等级 (默认: 6)
+# 主等级低于此值时使用 main-low 材料，大于等于此值时使用 main-high 材料
+main-material-threshold: 6
 
 # 材料设置
 materials:
+  # 主强化低级材料 (主等级 < main-material-threshold 时使用)
   main-low: DIAMOND
+  # 主强化高级材料 (主等级 >= main-material-threshold 时使用)
   main-high: NETHERITE_INGOT
+  # 分支强化材料
   branch: DIAMOND
+
+# ============================================
+# 分支强化池
+# 每种装备类型可随机获得的分支附魔列表
+# ============================================
+branch-pools:
+  SWORD:
+    - fire_aspect
+    - bane_of_arthropods
+    - smite
+  AXE:
+    - fire_aspect
+    - bane_of_arthropods
+    - smite
+  HELMET:
+    - projectile_protection
+    - fire_protection
+    - blast_protection
+  CHESTPLATE:
+    - projectile_protection
+    - fire_protection
+    - blast_protection
+  LEGGINGS:
+    - projectile_protection
+    - fire_protection
+    - blast_protection
+  BOOTS:
+    - projectile_protection
+    - fire_protection
+    - blast_protection
+
+# ============================================
+# 主附魔映射
+# 装备类型 -> 对应 Minecraft 附魔 ID
+# ============================================
+main-enchant-mapping:
+  SWORD: sharpness
+  AXE: sharpness
+  PICKAXE: efficiency
+  SHOVEL: efficiency
+  HOE: efficiency
+  HELMET: protection
+  CHESTPLATE: protection
+  LEGGINGS: protection
+  BOOTS: protection
+
+# ============================================
+# 进度条样式
+# ============================================
+progress-bar:
+  # 进度条总宽度 (字符数)
+  width: 25
+  # 已填充部分的颜色代码
+  filled-color: "§a"
+  # 未填充部分的颜色代码
+  empty-color: "§8"
+  # 百分比文字的颜色代码
+  suffix-color: "§f"
+  # 填充和空白使用的字符
+  char: "|"
+  # 百分比文字格式 (%s 会被替换为百分比数值)
+  suffix-format: " %s%%"
