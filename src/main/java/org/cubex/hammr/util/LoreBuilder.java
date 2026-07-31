@@ -2,10 +2,11 @@ package org.cubex.hammr.util;
 
 import net.kyori.adventure.text.Component;
 import org.bukkit.NamespacedKey;
-import org.bukkit.Registry;
 import org.bukkit.enchantments.Enchantment;
 import org.cubex.hammr.HammrEnhance;
 import org.cubex.hammr.storage.EnhanceData;
+import io.papermc.paper.registry.RegistryAccess;
+import io.papermc.paper.registry.RegistryKey;
 
 public final class LoreBuilder {
 
@@ -45,7 +46,7 @@ public final class LoreBuilder {
         String equipType = ItemChecker.getEquipType(material);
         String key = HammrEnhance.getInstance().getSettings().getMainEnchantKey(equipType);
         if (key == null || key.isEmpty()) return null;
-        return Registry.ENCHANTMENT.get(NamespacedKey.minecraft(key));
+        return RegistryAccess.registryAccess().getRegistry(RegistryKey.ENCHANTMENT).get(NamespacedKey.minecraft(key));
     }
 
     public static String getEnchantDisplayName(Enchantment ench) {
