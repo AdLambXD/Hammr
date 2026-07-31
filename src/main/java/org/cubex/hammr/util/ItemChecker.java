@@ -54,7 +54,12 @@ public final class ItemChecker {
 
     public static String getEquipType(ItemStack item) {
         if (item == null) return "TOOL";
-        return switch (item.getType()) {
+        return getEquipType(item.getType());
+    }
+
+    public static String getEquipType(Material material) {
+        if (material == null) return "TOOL";
+        return switch (material) {
             case NETHERITE_SWORD -> "SWORD";
             case NETHERITE_AXE -> "AXE";
             case NETHERITE_HELMET -> "HELMET";
