@@ -48,7 +48,7 @@ public final class ConfigSettings {
     public ConfigSettings() {
         reload();
     }
-
+    //沟槽的ds我日你🐎
     public void reload() {
         HammrEnhance plugin = HammrEnhance.getInstance();
         plugin.saveDefaultConfig();
@@ -58,7 +58,7 @@ public final class ConfigSettings {
         mainSuccessRates = cfg.getIntegerList("main-success-rates")
                 .stream().mapToInt(Integer::intValue).toArray();
         if (mainSuccessRates.length == 0) {
-            mainSuccessRates = new int[]{95, 95, 95, 95, 95, 85, 75, 60, 40, 20};
+            mainSuccessRates = new int[]{95, 95, 95, 95, 95, 85, 75, 60, 40, 30};
         }
 
         branchSuccessRates = cfg.getIntegerList("branch-success-rates")

@@ -30,6 +30,12 @@ public class XpListener implements Listener {
         if (off.getType() != Material.AIR) {
             EnhanceManager.addItemXp(off, xp);
         }
+
+        for (ItemStack armor : player.getInventory().getArmorContents()) {
+            if (armor != null && armor.getType() != Material.AIR) {
+                EnhanceManager.addItemXp(armor, xp);
+            }
+        }
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)

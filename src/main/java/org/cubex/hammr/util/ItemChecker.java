@@ -62,6 +62,10 @@ public final class ItemChecker {
         return switch (material) {
             case NETHERITE_SWORD -> "SWORD";
             case NETHERITE_AXE -> "AXE";
+            //啥子ds边写边忘
+            case NETHERITE_PICKAXE -> "PICKAXE";
+            case NETHERITE_SHOVEL -> "SHOVEL";
+            case NETHERITE_HOE -> "HOE";
             case NETHERITE_HELMET -> "HELMET";
             case NETHERITE_CHESTPLATE -> "CHESTPLATE";
             case NETHERITE_LEGGINGS -> "LEGGINGS";
