@@ -4,10 +4,10 @@
 
 # 主强化各等级成功率 (%) - 按等级顺序
 # 例如: 第1个值表示从+1强化到+2的成功率, 第2个值表示+2→+3, 以此类推
-main-success-rates: [95, 95, 95, 95, 95, 85, 75, 60, 40, 20]
+main-success-rates: [95, 95, 95, 95, 95, 85, 75, 60, 40, 30]
 
 # 分支强化各等级成功率 (%) - 按等级顺序
-branch-success-rates: [40, 35, 25, 15, 10]
+branch-success-rates: [40, 35, 30, 25, 20]
 
 # 主强化最高等级 (默认: 10)
 main-max-level: 10
@@ -28,16 +28,16 @@ cost-gold: 1000
 cost-gold-per-level: []
 
 # 失败掉级概率 (0.0 - 1.0)
-level-down-chance: 0.25
+level-down-chance: 0.2
 
 # 铁砧爆炸概率 (0.0 - 1.0)
-explosion-chance: 0.10
+explosion-chance: 0.05
 
 # 铁砧爆炸半径 (默认: 1.0)
-explosion-radius: 1.0
+explosion-radius: 2.0
 
 # 经验值倍率 - 每级主强化所需经验 = 主等级 × 倍率 (默认: 50)
-xp-multiplier: 50
+xp-multiplier: 100
 
 # 挖掘方块时获得的物品经验值 (默认: 1)
 block-break-xp: 1
