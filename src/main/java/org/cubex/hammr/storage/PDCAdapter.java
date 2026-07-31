@@ -6,6 +6,7 @@ import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 import org.cubex.hammr.HammrEnhance;
 import org.jetbrains.annotations.NotNull;
+import java.util.logging.Level;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -65,7 +66,7 @@ public final class PDCAdapter {
                 int level = Integer.parseInt(entry.substring(sep + 1));
                 if (level > 0) result.put(type, level);
             } catch (NumberFormatException e) {
-                // skip
+                HammrEnhance.getInstance().getLogger().log(Level.WARNING, "Failed to parse branch data entry: " + entry, e);
             }
         }
         return result;

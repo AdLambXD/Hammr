@@ -24,16 +24,18 @@ import java.util.concurrent.ThreadLocalRandom;
 
 public class EnhanceManager {
 
-    private ConfigSettings cfg() {
+    private EnhanceManager() {}
+
+    private static ConfigSettings cfg() {
         return HammrEnhance.getInstance().getSettings();
     }
 
-    private MessageProvider msg() {
+    private static MessageProvider msg() {
         return HammrEnhance.getInstance().getMessages();
     }
 
-    public EnhanceResult performMainEnhance(Player player, ItemStack item,
-                                             boolean hasDiamond, boolean hasIngot) {
+    public static EnhanceResult performMainEnhance(Player player, ItemStack item,
+                                                    boolean hasDiamond, boolean hasIngot) {
         ItemMeta meta = item.getItemMeta();
         if (meta == null) return EnhanceResult.error(msg().get("error.meta-null"));
 
@@ -60,7 +62,7 @@ public class EnhanceManager {
         }
 
         int rateIndex = Math.min(data.mainLevel(), cfg().getMainSuccessRates().length - 1);
-        boolean success = ThreadLocalRandom.current().nextInt(100) < cfg().getMainSuccessRate(data.mainLevel());
+        boolean success = ThreadLocalRandom.current().nextInt(100) < cfg().getMainSuccessRate(rateIndex);
 
         ItemStack result = item.clone();
         ItemMeta resultMeta = result.getItemMeta();
@@ -72,8 +74,8 @@ public class EnhanceManager {
         }
     }
 
-    private EnhanceResult applyMainSuccess(Player player, ItemStack item,
-                                           ItemMeta meta, EnhanceData data) {
+    private static EnhanceResult applyMainSuccess(Player player, ItemStack item,
+                                                  ItemMeta meta, EnhanceData data) {
         int newLevel = data.mainLevel() + 1;
 
         Enchantment mainEnch = LoreBuilder.getMainEnchant(item.getType());
@@ -106,8 +108,8 @@ public class EnhanceManager {
         return EnhanceResult.success(item, newLevel, data.branchLevel());
     }
 
-    private EnhanceResult applyMainFailure(Player player, ItemStack item,
-                                           ItemMeta meta, EnhanceData data, String material) {
+    private static EnhanceResult applyMainFailure(Player player, ItemStack item,
+                                                  ItemMeta meta, EnhanceData data, String material) {
         boolean levelDown = ThreadLocalRandom.current().nextDouble() < cfg().getLevelDownChance();
         boolean explode = ThreadLocalRandom.current().nextDouble() < cfg().getExplosionChance();
 
@@ -160,7 +162,7 @@ public class EnhanceManager {
         return EnhanceResult.failure(levelDown, explode, newMain, data.branchLevel(), item);
     }
 
-    public EnhanceResult performBranchEnhance(Player player, ItemStack item, boolean hasDiamond) {
+    public static EnhanceResult performBranchEnhance(Player player, ItemStack item, boolean hasDiamond) {
         ItemMeta meta = item.getItemMeta();
         if (meta == null) return EnhanceResult.error(msg().get("error.meta-null"));
 
@@ -186,7 +188,7 @@ public class EnhanceManager {
         }
 
         int rateIndex = Math.min(data.branchCount(), cfg().getBranchSuccessRates().length - 1);
-        boolean success = ThreadLocalRandom.current().nextInt(100) < cfg().getBranchSuccessRate(data.branchCount());
+        boolean success = ThreadLocalRandom.current().nextInt(100) < cfg().getBranchSuccessRate(rateIndex);
 
         ItemStack result = item.clone();
         ItemMeta resultMeta = result.getItemMeta();
@@ -198,8 +200,8 @@ public class EnhanceManager {
         }
     }
 
-    private EnhanceResult applyBranchSuccess(Player player, ItemStack item,
-                                             ItemMeta meta, EnhanceData data, String equipType) {
+    private static EnhanceResult applyBranchSuccess(Player player, ItemStack item,
+                                                    ItemMeta meta, EnhanceData data, String equipType) {
         List<String> pool = BranchPool.getPoolKeys(equipType);
         if (pool == null || pool.isEmpty()) {
             return EnhanceResult.error(msg().get("error.empty-pool"));
@@ -246,8 +248,8 @@ public class EnhanceManager {
         return EnhanceResult.success(item, data.mainLevel(), newData.branchLevel());
     }
 
-    private EnhanceResult applyBranchFailure(Player player, ItemStack item,
-                                             ItemMeta meta, EnhanceData data) {
+    private static EnhanceResult applyBranchFailure(Player player, ItemStack item,
+                                                    ItemMeta meta, EnhanceData data) {
         boolean explode = ThreadLocalRandom.current().nextDouble() < cfg().getExplosionChance();
         item.setItemMeta(meta);
 
@@ -264,7 +266,7 @@ public class EnhanceManager {
         return EnhanceResult.failure(false, explode, data.mainLevel(), data.branchLevel(), item);
     }
 
-    private void clearAllEnhancements(ItemMeta meta, EnhanceData data, Enchantment mainEnch) {
+    private static void clearAllEnhancements(ItemMeta meta, EnhanceData data, Enchantment mainEnch) {
         if (mainEnch != null) meta.removeEnchant(mainEnch);
         for (var entry : data.branches().entrySet()) {
             Enchantment branchEnch = BranchPool.toEnchantment(entry.getKey());
@@ -272,7 +274,7 @@ public class EnhanceManager {
         }
     }
 
-    private boolean checkAndDeductXp(Player player, EnhanceData data) {
+    private static boolean checkAndDeductXp(Player player, EnhanceData data) {
         int req = data.xpRequired();
         if (req <= 0) return true;
         if (data.xpPoints() >= req) return true;
@@ -281,7 +283,7 @@ public class EnhanceManager {
         return true;
     }
 
-    private boolean checkAndDeductGold(Player player, int level) {
+    private static boolean checkAndDeductGold(Player player, int level) {
         var eco = HammrEnhance.getInstance().getEconomyManager();
         if (!eco.isEnabled()) return true;
         int cost = cfg().getCostGold(level);
@@ -290,7 +292,7 @@ public class EnhanceManager {
         return true;
     }
 
-    private void broadcastAnnouncement(Player player, ItemStack item) {
+    private static void broadcastAnnouncement(Player player, ItemStack item) {
         if (!cfg().isBroadcastOnMaxLevel()) return;
         int maxLevel = cfg().getMainMaxLevel();
         Component msg = Component.text()
@@ -305,27 +307,26 @@ public class EnhanceManager {
         HammrEnhance.getInstance().getServer().broadcast(msg);
     }
 
-    private String getItemSimpleName(ItemStack item) {
-        var msg = msg();
+    private static String getItemSimpleName(ItemStack item) {
         return switch (item.getType()) {
-            case NETHERITE_SWORD -> msg.get("item-name.NETHERITE_SWORD");
-            case NETHERITE_AXE -> msg.get("item-name.NETHERITE_AXE");
-            case NETHERITE_PICKAXE -> msg.get("item-name.NETHERITE_PICKAXE");
-            case NETHERITE_SHOVEL -> msg.get("item-name.NETHERITE_SHOVEL");
-            case NETHERITE_HOE -> msg.get("item-name.NETHERITE_HOE");
-            case NETHERITE_HELMET -> msg.get("item-name.NETHERITE_HELMET");
-            case NETHERITE_CHESTPLATE -> msg.get("item-name.NETHERITE_CHESTPLATE");
-            case NETHERITE_LEGGINGS -> msg.get("item-name.NETHERITE_LEGGINGS");
-            case NETHERITE_BOOTS -> msg.get("item-name.NETHERITE_BOOTS");
+            case NETHERITE_SWORD -> msg().get("item-name.NETHERITE_SWORD");
+            case NETHERITE_AXE -> msg().get("item-name.NETHERITE_AXE");
+            case NETHERITE_PICKAXE -> msg().get("item-name.NETHERITE_PICKAXE");
+            case NETHERITE_SHOVEL -> msg().get("item-name.NETHERITE_SHOVEL");
+            case NETHERITE_HOE -> msg().get("item-name.NETHERITE_HOE");
+            case NETHERITE_HELMET -> msg().get("item-name.NETHERITE_HELMET");
+            case NETHERITE_CHESTPLATE -> msg().get("item-name.NETHERITE_CHESTPLATE");
+            case NETHERITE_LEGGINGS -> msg().get("item-name.NETHERITE_LEGGINGS");
+            case NETHERITE_BOOTS -> msg().get("item-name.NETHERITE_BOOTS");
             default -> item.getType().name();
         };
     }
 
-    private void sendActionBar(Player player, Component message) {
+    private static void sendActionBar(Player player, Component message) {
         player.sendActionBar(message);
     }
 
-    public static void syncInventory(org.bukkit.entity.Player player) {
+    public static void syncInventory(Player player) {
         for (ItemStack item : player.getInventory().getContents()) {
             syncItem(item);
         }

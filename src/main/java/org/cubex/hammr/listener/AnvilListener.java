@@ -20,7 +20,6 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.view.AnvilView;
 import org.bukkit.persistence.PersistentDataType;
 import org.cubex.hammr.HammrEnhance;
-import org.cubex.hammr.config.ConfigSettings;
 import org.cubex.hammr.config.MessageProvider;
 import org.cubex.hammr.enhancement.EnhanceManager;
 import org.cubex.hammr.enhancement.EnhanceResult;
@@ -34,7 +33,6 @@ import java.util.Map;
 public class AnvilListener implements Listener {
 
     private static final NamespacedKey PREVIEW_KEY = new NamespacedKey(HammrEnhance.getInstance(), "preview");
-    private final EnhanceManager enhanceManager = new EnhanceManager();
 
     private MessageProvider msg() {
         return HammrEnhance.getInstance().getMessages();
@@ -62,13 +60,13 @@ public class AnvilListener implements Listener {
         if (meta == null) return;
         EnhanceData data = PDCAdapter.readData(meta);
 
-        if (!isMainEnhancement(left, data, hasDiamond, hasIngot)
+        if (!isMainEnhancement(data, hasDiamond, hasIngot)
                 && !isBranchEnhancement(left, data, hasDiamond, hasIngot)) {
             event.setResult(null);
             return;
         }
 
-        boolean isMain = isMainEnhancement(left, data, hasDiamond, hasIngot);
+        boolean isMain = isMainEnhancement(data, hasDiamond, hasIngot);
         ItemStack preview = left.clone();
         ItemMeta previewMeta = preview.getItemMeta();
 
@@ -122,16 +120,16 @@ public class AnvilListener implements Listener {
         if (meta == null) return;
         EnhanceData data = PDCAdapter.readData(meta);
 
-        if (!isMainEnhancement(left, data, hasDiamond, hasIngot) &&
+        if (!isMainEnhancement(data, hasDiamond, hasIngot) &&
             !isBranchEnhancement(left, data, hasDiamond, hasIngot)) return;
 
         event.setCancelled(true);
 
         EnhanceResult result;
         if (isBranchEnhancement(left, data, hasDiamond, hasIngot)) {
-            result = enhanceManager.performBranchEnhance(player, left, hasDiamond);
+            result = EnhanceManager.performBranchEnhance(player, left, hasDiamond);
         } else {
-            result = enhanceManager.performMainEnhance(player, left, hasDiamond, hasIngot);
+            result = EnhanceManager.performMainEnhance(player, left, hasDiamond, hasIngot);
         }
 
         if (result.message() != null) {
@@ -174,7 +172,7 @@ public class AnvilListener implements Listener {
         EnhanceManager.syncInventory(player);
     }
 
-    private boolean isMainEnhancement(ItemStack item, EnhanceData data,
+    private boolean isMainEnhancement(EnhanceData data,
                                        boolean hasDiamond, boolean hasIngot) {
         if (data.isMainMaxed()) return false;
         int threshold = HammrEnhance.getInstance().getSettings().getMainMaterialThreshold();
@@ -203,7 +201,7 @@ public class AnvilListener implements Listener {
         ItemMeta meta = left.getItemMeta();
         if (meta == null) return false;
         EnhanceData data = PDCAdapter.readData(meta);
-        return isMainEnhancement(left, data, hasDiamond, hasIngot)
+        return isMainEnhancement(data, hasDiamond, hasIngot)
                 || isBranchEnhancement(left, data, hasDiamond, hasIngot);
     }
 

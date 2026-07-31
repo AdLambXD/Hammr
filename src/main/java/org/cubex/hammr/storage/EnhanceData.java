@@ -44,11 +44,6 @@ public record EnhanceData(int mainLevel, Map<String, Integer> branches, int xpPo
         return branches.size();
     }
 
-    public String branchType() {
-        if (branches.isEmpty()) return null;
-        return branches.entrySet().iterator().next().getKey();
-    }
-
     public boolean hasMain() {
         return mainLevel > 0;
     }
@@ -80,13 +75,4 @@ public record EnhanceData(int mainLevel, Map<String, Integer> branches, int xpPo
         return new EnhanceData(mainLevel, next, xpPoints);
     }
 
-    public EnhanceData removeBranch(String type) {
-        Map<String, Integer> next = new LinkedHashMap<>(branches);
-        next.remove(type);
-        return new EnhanceData(mainLevel, next, xpPoints);
-    }
-
-    public EnhanceData withBranches(Map<String, Integer> newBranches) {
-        return new EnhanceData(mainLevel, newBranches, xpPoints);
-    }
 }
