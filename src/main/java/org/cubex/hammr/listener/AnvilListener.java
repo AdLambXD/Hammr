@@ -48,13 +48,9 @@ public class AnvilListener implements Listener {
 
         if (right == null || right.getType().isAir()) return;
 
-        if (!ItemChecker.isDiamond(right) && !ItemChecker.isNetheriteIngot(right)) {
-            event.setResult(null);
-            return;
-        }
-
         boolean hasDiamond = ItemChecker.isDiamond(right);
         boolean hasIngot = ItemChecker.isNetheriteIngot(right);
+        if (!hasDiamond && !hasIngot) return;
 
         ItemMeta meta = left.getItemMeta();
         if (meta == null) return;
