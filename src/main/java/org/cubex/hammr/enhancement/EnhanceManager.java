@@ -57,7 +57,7 @@ public class EnhanceManager {
             return EnhanceResult.error(msg().get("error.insufficient-gold", cfg().getCostGold(data.mainLevel())));
         }
 
-        if (!checkAndDeductXp(player, data)) {
+        if (!checkAndDeductXp(data)) {
             return EnhanceResult.error(msg().get("error.insufficient-xp", data.xpRequired()));
         }
 
@@ -274,13 +274,10 @@ public class EnhanceManager {
         }
     }
 
-    private static boolean checkAndDeductXp(Player player, EnhanceData data) {
+    private static boolean checkAndDeductXp(EnhanceData data) {
         int req = data.xpRequired();
         if (req <= 0) return true;
-        if (data.xpPoints() >= req) return true;
-        if (player.getLevel() < req) return false;
-        player.setLevel(player.getLevel() - req);
-        return true;
+        return data.xpPoints() >= req;
     }
 
     private static boolean checkAndDeductGold(Player player, int level) {
