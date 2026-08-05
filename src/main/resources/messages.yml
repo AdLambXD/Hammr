@@ -9,7 +9,7 @@ error:
   need-ingot: "需要下界合金锭！"
   need-diamond: "需要钻石！"
   insufficient-gold: "金币不足！需要 {0} 金币。"
-  insufficient-xp: "需要 {0} 级经验值！"
+  insufficient-xp: "需要 {0} 点经验值！"
   low-main-for-branch: "主强化需达到 {0} 级才可进行分支强化！"
   branch-maxed: "分支强化已达最高等级！"
   no-branch-pool: "该装备无法进行分支强化！"
