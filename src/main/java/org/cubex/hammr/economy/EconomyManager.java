@@ -1,6 +1,7 @@
 package org.cubex.hammr.economy;
 
 import net.milkbowl.vault.economy.Economy;
+import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.RegisteredServiceProvider;
 import org.cubex.hammr.HammrEnhance;
@@ -35,5 +36,11 @@ public class EconomyManager {
         if (isEnabled()) {
             economy.depositPlayer(player, amount);
         }
+    }
+
+    @SuppressWarnings("deprecation")
+    public boolean depositToAccount(String accountName, double amount) {
+        if (!isEnabled() || accountName == null || accountName.isBlank()) return false;
+        return economy.depositPlayer(Bukkit.getOfflinePlayer(accountName), amount).transactionSuccess();
     }
 }

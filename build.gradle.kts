@@ -3,7 +3,7 @@ plugins {
 }
 
 group = "org.cubex.hammr"
-version = "1.2.1"
+version = "1.3.2"
 
 java {
     toolchain.languageVersion.set(JavaLanguageVersion.of(21))

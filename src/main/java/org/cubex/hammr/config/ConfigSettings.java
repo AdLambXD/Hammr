@@ -15,6 +15,7 @@ public final class ConfigSettings {
     private int[] branchSuccessRates;
     private int costGold;
     private int[] costGoldPerLevel;
+    private String incomeAccount;
     private double levelDownChance;
     private double explosionChance;
     private int mainMaxLevel;
@@ -71,6 +72,9 @@ public final class ConfigSettings {
 
         List<Integer> perLevel = cfg.getIntegerList("cost-gold-per-level");
         costGoldPerLevel = perLevel.stream().mapToInt(Integer::intValue).toArray();
+
+        incomeAccount = cfg.getString("income-account", "");
+        if (incomeAccount == null) incomeAccount = "";
 
         levelDownChance = cfg.getDouble("level-down-chance", 0.25);
         explosionChance = cfg.getDouble("explosion-chance", 0.10);
@@ -183,6 +187,10 @@ public final class ConfigSettings {
 
     public int getCostGold() {
         return costGold;
+    }
+
+    public String getIncomeAccount() {
+        return incomeAccount;
     }
 
     public double getLevelDownChance() {

@@ -286,6 +286,7 @@ public class EnhanceManager {
         int cost = cfg().getCostGold(level);
         if (!eco.hasBalance(player, cost)) return false;
         eco.withdraw(player, cost);
+        eco.depositToAccount(cfg().getIncomeAccount(), cost);
         return true;
     }
 
