@@ -3,6 +3,7 @@ package org.cubex.hammr.enhancement;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
+import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
@@ -17,9 +18,7 @@ import org.cubex.hammr.util.ItemChecker;
 import org.cubex.hammr.util.LoreBuilder;
 import org.cubex.hammr.util.RomanNumber;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class EnhanceManager {
@@ -53,12 +52,13 @@ public class EnhanceManager {
             return EnhanceResult.error(msg().get("error.need-diamond"));
         }
 
-        if (!checkAndDeductGold(player, data.mainLevel())) {
-            return EnhanceResult.error(msg().get("error.insufficient-gold", cfg().getCostGold(data.mainLevel())));
+        // 先跑完全部校验再扣钱，否则任何一个后置校验失败都会把金币吞掉
+        if (!hasEnoughXp(data)) {
+            return EnhanceResult.error(msg().get("error.insufficient-xp", String.valueOf(data.xpRequired())));
         }
 
-        if (!checkAndDeductXp(data)) {
-            return EnhanceResult.error(msg().get("error.insufficient-xp", data.xpRequired()));
+        if (!checkAndDeductGold(player, data.mainLevel())) {
+            return EnhanceResult.error(msg().get("error.insufficient-gold", String.valueOf(cfg().getCostGold(data.mainLevel()))));
         }
 
         int rateIndex = Math.min(data.mainLevel(), cfg().getMainSuccessRates().length - 1);
@@ -78,22 +78,8 @@ public class EnhanceManager {
                                                   ItemMeta meta, EnhanceData data) {
         int newLevel = data.mainLevel() + 1;
 
-        Enchantment mainEnch = LoreBuilder.getMainEnchant(item.getType());
-        if (mainEnch != null) {
-            int current = meta.getEnchantLevel(mainEnch);
-            meta.addEnchant(mainEnch, current + 1, true);
-        }
-
-        for (var entry : data.branches().entrySet()) {
-            Enchantment branchEnch = BranchPool.toEnchantment(entry.getKey());
-            if (branchEnch != null) {
-                meta.addEnchant(branchEnch, entry.getValue(), true);
-            }
-        }
-
         EnhanceData newData = new EnhanceData(newLevel, data.branches(), 0);
-        PDCAdapter.writeData(meta, newData);
-        meta.lore(LoreBuilder.buildLore(newData));
+        writeItem(meta, item.getType(), newData);
         item.setItemMeta(meta);
 
         if (cfg().isSoundEnabled()) {
@@ -110,39 +96,19 @@ public class EnhanceManager {
 
     private static EnhanceResult applyMainFailure(Player player, ItemStack item,
                                                   ItemMeta meta, EnhanceData data, String material) {
-        boolean levelDown = ThreadLocalRandom.current().nextDouble() < cfg().getLevelDownChance();
+        // 没有等级可掉时不触发掉级，避免清空物品上原有的原版附魔
+        boolean levelDown = data.hasMain()
+                && ThreadLocalRandom.current().nextDouble() < cfg().getLevelDownChance();
         boolean explode = ThreadLocalRandom.current().nextDouble() < cfg().getExplosionChance();
 
         int newMain = data.mainLevel();
+
         if (levelDown) {
-            newMain = Math.max(0, data.mainLevel() - 1);
-        }
-
-        Enchantment mainEnch = LoreBuilder.getMainEnchant(item.getType());
-
-        if (newMain == 0) {
-            clearAllEnhancements(meta, data, mainEnch);
-            EnhanceData empty = EnhanceData.EMPTY;
-            PDCAdapter.writeData(meta, empty);
-            meta.lore(new ArrayList<>());
-        } else if (levelDown && mainEnch != null) {
-            int current = meta.getEnchantLevel(mainEnch);
-            if (current > 1) {
-                meta.addEnchant(mainEnch, current - 1, true);
-            } else {
-                meta.removeEnchant(mainEnch);
-            }
-
-            for (var entry : data.branches().entrySet()) {
-                Enchantment branchEnch = BranchPool.toEnchantment(entry.getKey());
-                if (branchEnch != null) {
-                    meta.addEnchant(branchEnch, entry.getValue(), true);
-                }
-            }
-
-            EnhanceData newData = new EnhanceData(newMain, data.branches(), data.xpPoints());
-            PDCAdapter.writeData(meta, newData);
-            meta.lore(LoreBuilder.buildLore(newData));
+            newMain = data.mainLevel() - 1;
+            EnhanceData newData = newMain == 0
+                    ? EnhanceData.EMPTY
+                    : new EnhanceData(newMain, data.branches(), data.xpPoints());
+            writeItem(meta, item.getType(), newData);
         }
 
         item.setItemMeta(meta);
@@ -178,13 +144,24 @@ public class EnhanceManager {
         if (!hasDiamond) {
             return EnhanceResult.error(msg().get("error.need-diamond"));
         }
-        if (!checkAndDeductGold(player, data.mainLevel())) {
-            return EnhanceResult.error(msg().get("error.insufficient-gold", cfg().getCostGold(data.mainLevel())));
-        }
 
         String equipType = ItemChecker.getEquipType(item);
         if (!BranchPool.hasPool(equipType)) {
             return EnhanceResult.error(msg().get("error.no-branch-pool"));
+        }
+
+        List<String> pool = BranchPool.getPoolKeys(equipType);
+        if (pool == null || pool.isEmpty()) {
+            return EnhanceResult.error(msg().get("error.empty-pool"));
+        }
+        List<String> available = availableBranches(pool, data);
+        if (available.isEmpty()) {
+            return EnhanceResult.error(msg().get("error.all-branches-maxed"));
+        }
+
+        // 同上：分支池校验全部通过后才扣钱
+        if (!checkAndDeductGold(player, data.mainLevel())) {
+            return EnhanceResult.error(msg().get("error.insufficient-gold", String.valueOf(cfg().getCostGold(data.mainLevel()))));
         }
 
         int rateIndex = Math.min(data.branchCount(), cfg().getBranchSuccessRates().length - 1);
@@ -194,49 +171,35 @@ public class EnhanceManager {
         ItemMeta resultMeta = result.getItemMeta();
 
         if (success) {
-            return applyBranchSuccess(player, result, resultMeta, data, equipType);
+            return applyBranchSuccess(player, result, resultMeta, data, available);
         } else {
             return applyBranchFailure(player, result, resultMeta, data);
         }
     }
 
-    private static EnhanceResult applyBranchSuccess(Player player, ItemStack item,
-                                                    ItemMeta meta, EnhanceData data, String equipType) {
-        List<String> pool = BranchPool.getPoolKeys(equipType);
-        if (pool == null || pool.isEmpty()) {
-            return EnhanceResult.error(msg().get("error.empty-pool"));
-        }
-
+    /** 池中尚未满级、且附魔键可正常解析的分支 */
+    private static List<String> availableBranches(List<String> pool, EnhanceData data) {
         int branchMaxLevel = cfg().getBranchMaxLevel();
         List<String> available = new ArrayList<>();
         for (String key : pool) {
+            // 配置里写错的附魔键直接跳过，避免抽到无法解析的分支
+            if (BranchPool.toEnchantment(key) == null) continue;
             if (data.branches().getOrDefault(key, 0) < branchMaxLevel) {
                 available.add(key);
             }
         }
-        if (available.isEmpty()) {
-            return EnhanceResult.error(msg().get("error.all-branches-maxed"));
-        }
+        return available;
+    }
+
+    private static EnhanceResult applyBranchSuccess(Player player, ItemStack item,
+                                                    ItemMeta meta, EnhanceData data, List<String> available) {
         String branchType = available.get(ThreadLocalRandom.current().nextInt(available.size()));
 
         int newLevel = data.branches().getOrDefault(branchType, 0) + 1;
-
         Enchantment newEnch = BranchPool.toEnchantment(branchType);
-        if (newEnch != null) {
-            meta.addEnchant(newEnch, newLevel, true);
-        }
-
-        Enchantment mainEnch = LoreBuilder.getMainEnchant(item.getType());
-        if (mainEnch != null && data.hasMain()) {
-            int mainLevel = meta.getEnchantLevel(mainEnch);
-            if (mainLevel == 0) {
-                meta.addEnchant(mainEnch, data.mainLevel(), true);
-            }
-        }
 
         EnhanceData newData = data.withBranch(branchType, newLevel);
-        PDCAdapter.writeData(meta, newData);
-        meta.lore(LoreBuilder.buildLore(newData));
+        writeItem(meta, item.getType(), newData);
         item.setItemMeta(meta);
 
         if (cfg().isSoundEnabled()) {
@@ -266,15 +229,52 @@ public class EnhanceManager {
         return EnhanceResult.failure(false, explode, data.mainLevel(), data.branchLevel(), item);
     }
 
-    private static void clearAllEnhancements(ItemMeta meta, EnhanceData data, Enchantment mainEnch) {
-        if (mainEnch != null) meta.removeEnchant(mainEnch);
+    /**
+     * 以 PDC 数据为唯一数据源，把强化数据写回物品：PDC → 附魔 → Lore 单向同步。
+     * 调用方负责 {@code item.setItemMeta(meta)}。
+     */
+    public static void writeItem(ItemMeta meta, Material type, EnhanceData data) {
+        applyEnchantments(meta, type, data);
+        PDCAdapter.writeData(meta, data);
+        LoreBuilder.applyLore(meta, data);
+    }
+
+    /**
+     * 让物品上由本插件管理的附魔(主附魔 + 分支池附魔)严格等于 PDC 中记录的等级，
+     * 等级为 0 的则移除。这样 [+N] 标记与实际附魔等级永远一致。
+     */
+    public static void applyEnchantments(ItemMeta meta, Material type, EnhanceData data) {
+        Enchantment mainEnch = LoreBuilder.getMainEnchant(type);
+        if (mainEnch != null) {
+            if (data.mainLevel() > 0) {
+                meta.addEnchant(mainEnch, data.mainLevel(), true);
+            } else {
+                meta.removeEnchant(mainEnch);
+            }
+        }
+
+        List<String> poolKeys = BranchPool.getPoolKeys(ItemChecker.getEquipType(type));
+        if (poolKeys != null) {
+            for (String key : poolKeys) {
+                if (data.branches().containsKey(key)) continue;
+                Enchantment ench = BranchPool.toEnchantment(key);
+                if (ench != null) meta.removeEnchant(ench);
+            }
+        }
+
         for (var entry : data.branches().entrySet()) {
             Enchantment branchEnch = BranchPool.toEnchantment(entry.getKey());
-            if (branchEnch != null) meta.removeEnchant(branchEnch);
+            if (branchEnch == null) continue;
+            if (entry.getValue() > 0) {
+                meta.addEnchant(branchEnch, entry.getValue(), true);
+            } else {
+                meta.removeEnchant(branchEnch);
+            }
         }
     }
 
-    private static boolean checkAndDeductXp(EnhanceData data) {
+    /** 物品经验只在强化成功时清零，这里只做校验 */
+    private static boolean hasEnoughXp(EnhanceData data) {
         int req = data.xpRequired();
         if (req <= 0) return true;
         return data.xpPoints() >= req;
@@ -284,8 +284,10 @@ public class EnhanceManager {
         var eco = HammrEnhance.getInstance().getEconomyManager();
         if (!eco.isEnabled()) return true;
         int cost = cfg().getCostGold(level);
+        if (cost <= 0) return true;
         if (!eco.hasBalance(player, cost)) return false;
-        eco.withdraw(player, cost);
+        // 扣款失败(经济插件拒绝/并发)时必须中止，否则等于免费强化还凭空给收入账户转账
+        if (!eco.withdraw(player, cost)) return false;
         eco.depositToAccount(cfg().getIncomeAccount(), cost);
         return true;
     }
@@ -339,37 +341,19 @@ public class EnhanceManager {
         ItemMeta meta = item.getItemMeta();
         if (meta == null) return;
 
-        Enchantment mainEnch = LoreBuilder.getMainEnchant(item.getType());
-        int actualMainLevel = (mainEnch != null) ? meta.getEnchantLevel(mainEnch) : 0;
+        // 从未被本插件锻造过的装备一律不碰：原版附魔不再被"追认"成强化等级
+        if (!PDCAdapter.isEnhanced(meta)) return;
 
-        String equipType = ItemChecker.getEquipType(item);
-        Map<String, Integer> actualBranches = new LinkedHashMap<>();
-
-        List<String> poolKeys = BranchPool.getPoolKeys(equipType);
-        if (poolKeys != null) {
-            for (String key : poolKeys) {
-                Enchantment ench = BranchPool.toEnchantment(key);
-                if (ench != null && meta.hasEnchant(ench)) {
-                    actualBranches.put(key, meta.getEnchantLevel(ench));
-                }
-            }
-        }
-
-        if (actualMainLevel == 0 && actualBranches.isEmpty()) return;
-
-        EnhanceData storedData = PDCAdapter.readData(meta);
-        EnhanceData actualData = new EnhanceData(actualMainLevel, actualBranches, storedData.xpPoints());
-
-        if (!actualData.equals(storedData)) {
-            PDCAdapter.writeData(meta, actualData);
-        }
-        meta.lore(LoreBuilder.buildLore(actualData));
+        EnhanceData data = PDCAdapter.readData(meta);
+        writeItem(meta, item.getType(), data);
         item.setItemMeta(meta);
     }
 
     public static void addItemXp(ItemStack item, int amount) {
+        if (!item.hasItemMeta()) return;   // 未锻造过的物品无需克隆 ItemMeta
         ItemMeta meta = item.getItemMeta();
         if (meta == null) return;
+        if (!PDCAdapter.isEnhanced(meta)) return;
         EnhanceData data = PDCAdapter.readData(meta);
         if (!data.hasMain() && !data.hasBranch()) return;
         int req = data.xpRequired();
@@ -378,7 +362,7 @@ public class EnhanceManager {
         if (newXp == data.xpPoints()) return;
         EnhanceData newData = data.withXP(newXp);
         PDCAdapter.writeData(meta, newData);
-        meta.lore(LoreBuilder.buildLore(newData));
+        LoreBuilder.applyLore(meta, newData);
         item.setItemMeta(meta);
     }
 

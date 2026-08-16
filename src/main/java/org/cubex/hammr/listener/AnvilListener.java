@@ -17,6 +17,7 @@ import org.bukkit.event.inventory.PrepareAnvilEvent;
 import org.bukkit.inventory.AnvilInventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.inventory.InventoryView;
 import org.bukkit.inventory.view.AnvilView;
 import org.bukkit.persistence.PersistentDataType;
 import org.cubex.hammr.HammrEnhance;
@@ -27,12 +28,20 @@ import org.cubex.hammr.storage.EnhanceData;
 import org.cubex.hammr.storage.PDCAdapter;
 import org.cubex.hammr.util.ItemChecker;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.WeakHashMap;
 
 public class AnvilListener implements Listener {
 
     private static final NamespacedKey PREVIEW_KEY = new NamespacedKey(HammrEnhance.getInstance(), "preview");
+    public static final String PERMISSION_USE = "hammr.use";
+
+    /** 被本插件打开过越级附魔豁免的铁砧界面；用弱引用避免界面关闭后残留 */
+    private final Set<InventoryView> bypassedViews =
+            Collections.newSetFromMap(new WeakHashMap<>());
 
     private MessageProvider msg() {
         return HammrEnhance.getInstance().getMessages();
@@ -43,6 +52,18 @@ public class AnvilListener implements Listener {
         AnvilInventory inv = event.getInventory();
         ItemStack left = inv.getItem(0);
         ItemStack right = inv.getItem(1);
+
+        // 越级附魔豁免标记会残留在铁砧界面上：玩家放入装备+钻石让本插件打开豁免后，
+        // 再把钻石换成附魔书，就能用原版合成突破附魔等级上限。
+        // 本事件在原版算完结果之后才触发，所以除了复位标记，还要作废这一次可能在
+        // 残留豁免下算出的结果(本插件自己的预览会在下面重新写回)。
+        if (bypassedViews.remove(event.getView()) && event.getView() instanceof AnvilView staleView) {
+            staleView.bypassEnchantmentLevelRestriction(false);
+            event.setResult(null);
+        }
+
+        // 无权限者连预览都不显示，铁砧保持原版行为
+        if (!event.getView().getPlayer().hasPermission(PERMISSION_USE)) return;
 
         if (!ItemChecker.isNetheriteEquipment(left)) return;
 
@@ -66,13 +87,14 @@ public class AnvilListener implements Listener {
         ItemStack preview = left.clone();
         ItemMeta previewMeta = preview.getItemMeta();
 
-        int cost = HammrEnhance.getInstance().getSettings().getCostGold();
+        // 与实际扣费保持一致：配置了 cost-gold-per-level 时预览必须显示当前等级的价格
+        int cost = HammrEnhance.getInstance().getSettings().getCostGold(data.mainLevel());
         String materialName = msg().get(hasIngot ? "material-name.NETHERITE_INGOT" : "material-name.DIAMOND");
 
         List<Component> lore = new ArrayList<>();
         lore.add(Component.text(msg().get("preview.separator"), NamedTextColor.DARK_GRAY));
         lore.add(Component.text(msg().get(isMain ? "preview.title-main" : "preview.title-branch"), NamedTextColor.GOLD, TextDecoration.BOLD));
-        lore.add(Component.text(msg().get("preview.cost", materialName, cost), NamedTextColor.GREEN));
+        lore.add(Component.text(msg().get("preview.cost", materialName, String.valueOf(cost)), NamedTextColor.GREEN));
         lore.add(Component.text(msg().get("preview.instruction"), NamedTextColor.GRAY));
 
         previewMeta.lore(lore);
@@ -84,6 +106,7 @@ public class AnvilListener implements Listener {
             view.setRepairCost(0);
             view.setRepairItemCountCost(1);
             view.bypassEnchantmentLevelRestriction(true);
+            bypassedViews.add(event.getView());
         }
     }
 
@@ -102,6 +125,15 @@ public class AnvilListener implements Listener {
         // Cancel stale preview clicks
         if (isHammrPreview(current) && !isValidEnhancementContext(left, right)) {
             event.setCancelled(true);
+            return;
+        }
+
+        // 无权限时不允许取走插件生成的预览物品
+        if (!player.hasPermission(PERMISSION_USE)) {
+            if (isHammrPreview(current)) {
+                event.setCancelled(true);
+                player.sendMessage(Component.text(msg().get("error.no-permission"), NamedTextColor.RED));
+            }
             return;
         }
 
@@ -134,18 +166,10 @@ public class AnvilListener implements Listener {
         }
 
         Location anvilLoc = inv.getLocation();
-        ItemStack resultItem = result.enhancedItem() != null ? result.enhancedItem() : left;
+        ItemStack resultItem = result.enhancedItem() != null ? result.enhancedItem() : left.clone();
 
-        if (result.exploded() && anvilLoc != null) {
-            player.closeInventory();
-            if (resultItem != null) {
-                anvilLoc.getWorld().dropItemNaturally(anvilLoc, resultItem);
-            }
-            destroyAnvil(anvilLoc);
-            return;
-        }
-
-        // Consume materials
+        // 必须先消耗输入槽：关闭铁砧时 Bukkit 会把输入槽里的物品退还玩家，
+        // 若留到爆炸分支之后再清空就会出现"原件退回 + 成品掉落"的复制。
         inv.setItem(0, null);
         if (right.getAmount() > 1) {
             right.setAmount(right.getAmount() - 1);
@@ -154,18 +178,51 @@ public class AnvilListener implements Listener {
             inv.setItem(1, null);
         }
 
-        // Give result to player
         boolean shift = event.getClick() == ClickType.SHIFT_LEFT || event.getClick() == ClickType.SHIFT_RIGHT;
-        if (shift) {
-            Map<Integer, ItemStack> remaining = player.getInventory().addItem(resultItem);
-            if (!remaining.isEmpty()) {
-                player.getWorld().dropItem(player.getLocation(), resultItem);
+
+        // 事件已被取消，此时同步改动背包/光标会与客户端脱同步，统一放到下一 tick 执行
+        runNextTick(() -> {
+            if (result.exploded() && anvilLoc != null) {
+                player.closeInventory();
+                destroyAnvil(anvilLoc);
+                // 先爆炸再掉落，避免成品被爆炸摧毁
+                anvilLoc.getWorld().dropItemNaturally(anvilLoc, resultItem);
+                return;
             }
-        } else {
-            player.setItemOnCursor(resultItem);
+            giveResult(player, resultItem, shift);
+            EnhanceManager.syncInventory(player);
+            player.updateInventory();
+        });
+    }
+
+    private void runNextTick(Runnable task) {
+        HammrEnhance plugin = HammrEnhance.getInstance();
+        plugin.getServer().getScheduler().runTask(plugin, task);
+    }
+
+    /**
+     * 把成品交给玩家：光标已有物品时不覆盖(否则会吞掉玩家原有的物品)，
+     * 改为放入背包，背包满则掉落在脚下。
+     */
+    private void giveResult(Player player, ItemStack resultItem, boolean shift) {
+        // 玩家在这一 tick 内掉线时直接掉落，避免成品凭空消失
+        if (!player.isOnline()) {
+            player.getWorld().dropItemNaturally(player.getLocation(), resultItem);
+            return;
         }
 
-        EnhanceManager.syncInventory(player);
+        ItemStack cursor = player.getItemOnCursor();
+        boolean cursorFree = cursor == null || cursor.getType().isAir();
+
+        if (!shift && cursorFree) {
+            player.setItemOnCursor(resultItem);
+            return;
+        }
+
+        Map<Integer, ItemStack> remaining = player.getInventory().addItem(resultItem);
+        for (ItemStack leftover : remaining.values()) {
+            player.getWorld().dropItemNaturally(player.getLocation(), leftover);
+        }
     }
 
     private boolean isMainEnhancement(EnhanceData data,
@@ -204,7 +261,8 @@ public class AnvilListener implements Listener {
     private void destroyAnvil(Location loc) {
         Block block = loc.getBlock();
         if (block.getType().name().contains("ANVIL")) {
-            block.getWorld().createExplosion(loc, 1.0f, false, false);
+            float radius = HammrEnhance.getInstance().getSettings().getExplosionRadius();
+            block.getWorld().createExplosion(loc, radius, false, false);
             block.setType(Material.AIR);
         }
     }
