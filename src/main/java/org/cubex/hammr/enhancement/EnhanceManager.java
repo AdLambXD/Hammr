@@ -95,7 +95,7 @@ public class EnhanceManager {
         }
 
         sendActionBar(player, msg().getComponent("actionbar.main-success", NamedTextColor.GREEN, TextDecoration.BOLD, String.valueOf(newLevel)));
-        return EnhanceResult.success(item, newLevel, data.branchLevel());
+        return EnhanceResult.success(item, newLevel, BranchPool.totalLevel(meta, item.getType(), newData));
     }
 
     private static EnhanceResult applyMainFailure(Player player, ItemStack item,
@@ -129,7 +129,7 @@ public class EnhanceManager {
         }
         sendActionBar(player, failMsg);
 
-        return EnhanceResult.failure(levelDown, explode, newMain, data.branchLevel(), item);
+        return EnhanceResult.failure(levelDown, explode, newMain, BranchPool.totalLevel(meta, item.getType(), data), item);
     }
 
     public static EnhanceResult performBranchEnhance(Player player, ItemStack item, boolean hasDiamond) {
@@ -142,7 +142,9 @@ public class EnhanceManager {
         if (data.mainLevel() < reqMainLevel) {
             return EnhanceResult.error(msg().get("error.low-main-for-branch", reqMainLevel));
         }
-        if (data.isBranchMaxed()) {
+        // 分支等级 = 分支池附魔的真实等级之和(含强化前的原版基础附魔)，与主强化按等级判定一致
+        int totalBranchLevel = BranchPool.totalLevel(meta, item.getType(), data);
+        if (data.isBranchMaxed(totalBranchLevel)) {
             return EnhanceResult.error(msg().get("error.branch-maxed"));
         }
         if (!hasDiamond) {
@@ -158,7 +160,7 @@ public class EnhanceManager {
         if (pool == null || pool.isEmpty()) {
             return EnhanceResult.error(msg().get("error.empty-pool"));
         }
-        List<String> available = availableBranches(pool, data);
+        List<String> available = availableBranches(pool, data, meta);
         if (available.isEmpty()) {
             return EnhanceResult.error(msg().get("error.all-branches-maxed"));
         }
@@ -168,7 +170,7 @@ public class EnhanceManager {
             return EnhanceResult.error(msg().get("error.insufficient-gold", String.valueOf(cfg().getCostGold(data.mainLevel()))));
         }
 
-        int rateIndex = Math.min(data.branchCount(), cfg().getBranchSuccessRates().length - 1);
+        int rateIndex = Math.min(totalBranchLevel, cfg().getBranchSuccessRates().length - 1);
         boolean success = ThreadLocalRandom.current().nextInt(100) < cfg().getBranchSuccessRate(rateIndex);
 
         ItemStack result = item.clone();
@@ -182,13 +184,15 @@ public class EnhanceManager {
     }
 
     /** 池中尚未满级、且附魔键可正常解析的分支 */
-    private static List<String> availableBranches(List<String> pool, EnhanceData data) {
+    private static List<String> availableBranches(List<String> pool, EnhanceData data, ItemMeta meta) {
         int branchMaxLevel = cfg().getBranchMaxLevel();
         List<String> available = new ArrayList<>();
         for (String key : pool) {
             // 配置里写错的附魔键直接跳过，避免抽到无法解析的分支
             if (BranchPool.toEnchantment(key) == null) continue;
-            if (data.branches().getOrDefault(key, 0) < branchMaxLevel) {
+            Enchantment ench = BranchPool.toEnchantment(key);
+            // 用含原版基础附魔的真实等级判断是否满级，与分支等级口径一致
+            if (meta.getEnchantLevel(ench) < branchMaxLevel) {
                 available.add(key);
             }
         }
@@ -212,9 +216,8 @@ public class EnhanceManager {
 
         String enchName = LoreBuilder.getEnchantDisplayName(newEnch);
         sendActionBar(player, msg().getComponent("actionbar.branch-success", NamedTextColor.GREEN, enchName + " " + RomanNumber.toRoman(newLevel)));
-        return EnhanceResult.success(item, data.mainLevel(), newData.branchLevel());
+        return EnhanceResult.success(item, data.mainLevel(), BranchPool.totalLevel(meta, item.getType(), newData));
     }
-
     private static EnhanceResult applyBranchFailure(Player player, ItemStack item,
                                                     ItemMeta meta, EnhanceData data) {
         boolean explode = ThreadLocalRandom.current().nextDouble() < cfg().getExplosionChance();
@@ -230,7 +233,7 @@ public class EnhanceManager {
         }
         sendActionBar(player, brFailMsg);
 
-        return EnhanceResult.failure(false, explode, data.mainLevel(), data.branchLevel(), item);
+        return EnhanceResult.failure(false, explode, data.mainLevel(), BranchPool.totalLevel(meta, item.getType(), data), item);
     }
 
     /**

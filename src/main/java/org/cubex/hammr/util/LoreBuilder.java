@@ -4,6 +4,7 @@ import net.kyori.adventure.text.Component;
 import org.bukkit.NamespacedKey;
 import org.bukkit.enchantments.Enchantment;
 import org.cubex.hammr.HammrEnhance;
+import org.cubex.hammr.enhancement.BranchPool;
 import org.cubex.hammr.storage.EnhanceData;
 import io.papermc.paper.registry.RegistryAccess;
 import io.papermc.paper.registry.RegistryKey;
@@ -26,7 +27,7 @@ public final class LoreBuilder {
         int displayMainLevel = mainEnchant == null
                 ? data.mainLevel()
                 : meta.getEnchantLevel(mainEnchant);
-        var lore = buildLore(data, displayMainLevel);
+        var lore = buildLore(data, displayMainLevel, BranchPool.totalLevel(meta, material, data));
         meta.lore(lore.isEmpty() ? null : lore);
     }
 
@@ -35,6 +36,10 @@ public final class LoreBuilder {
     }
 
     private static java.util.List<Component> buildLore(EnhanceData data, int displayMainLevel) {
+        return buildLore(data, displayMainLevel, data.branchLevel());
+    }
+
+    private static java.util.List<Component> buildLore(EnhanceData data, int displayMainLevel, int displayBranchLevel) {
         var lore = new java.util.ArrayList<Component>();
         if (data.mainLevel() <= 0 && !data.hasBranch()) return lore;
 
@@ -42,8 +47,8 @@ public final class LoreBuilder {
         StringBuilder sb = new StringBuilder();
 
         String levelTag = "[+" + displayMainLevel;
-        if (data.branchLevel() > 0) {
-            levelTag += "(" + data.branchLevel() + ")";
+        if (displayBranchLevel > 0) {
+            levelTag += "(" + displayBranchLevel + ")";
         }
         levelTag += "]";
         sb.append("§6§l").append(levelTag);

@@ -22,6 +22,7 @@ import org.bukkit.inventory.view.AnvilView;
 import org.bukkit.persistence.PersistentDataType;
 import org.cubex.hammr.HammrEnhance;
 import org.cubex.hammr.config.MessageProvider;
+import org.cubex.hammr.enhancement.BranchPool;
 import org.cubex.hammr.enhancement.EnhanceManager;
 import org.cubex.hammr.enhancement.EnhanceResult;
 import org.cubex.hammr.storage.EnhanceData;
@@ -237,7 +238,9 @@ public class AnvilListener implements Listener {
                                           boolean hasDiamond, boolean hasIngot) {
         if (!hasDiamond) return false;
         if (!ItemChecker.hasBranchPool(item)) return false;
-        return data.canBranch();
+        ItemMeta meta = item.getItemMeta();
+        if (meta == null) return false;
+        return data.canBranch(BranchPool.totalLevel(meta, item.getType(), data));
     }
 
     private boolean isHammrPreview(ItemStack item) {
