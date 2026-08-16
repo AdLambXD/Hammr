@@ -7,24 +7,28 @@ import org.bukkit.Material;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabExecutor;
-import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.cubex.hammr.HammrEnhance;
-import org.cubex.hammr.config.ConfigSettings;
 import org.cubex.hammr.config.MessageProvider;
 import org.cubex.hammr.enhancement.BranchPool;
+import org.cubex.hammr.enhancement.EnhanceManager;
 import org.cubex.hammr.storage.EnhanceData;
 import org.cubex.hammr.storage.PDCAdapter;
 import org.cubex.hammr.util.ItemChecker;
-import org.cubex.hammr.util.LoreBuilder;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
 public class HammrCommand implements TabExecutor {
+
+    private static final String PERM_SET = "hammr.command.set";
+    private static final String PERM_REMOVE = "hammr.command.remove";
+    private static final String PERM_GIVE = "hammr.command.give";
+    private static final String PERM_RELOAD = "hammr.command.reload";
+    private static final List<String> ALL_PERMS = List.of(PERM_SET, PERM_REMOVE, PERM_GIVE, PERM_RELOAD);
 
     private MessageProvider msg() {
         return HammrEnhance.getInstance().getMessages();
@@ -33,18 +37,36 @@ public class HammrCommand implements TabExecutor {
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (args.length == 0) {
-            sendUsage(sender);
+            sendUsageOrDeny(sender);
             return true;
         }
 
         switch (args[0].toLowerCase()) {
-            case "set" -> handleSet(sender, args);
-            case "remove" -> handleRemove(sender);
-            case "give" -> handleGive(sender, args);
-            case "reload" -> handleReload(sender);
-            default -> sendUsage(sender);
+            case "set" -> { if (checkPermission(sender, PERM_SET)) handleSet(sender, args); }
+            case "remove" -> { if (checkPermission(sender, PERM_REMOVE)) handleRemove(sender); }
+            case "give" -> { if (checkPermission(sender, PERM_GIVE)) handleGive(sender, args); }
+            case "reload" -> { if (checkPermission(sender, PERM_RELOAD)) handleReload(sender); }
+            default -> sendUsageOrDeny(sender);
         }
         return true;
+    }
+
+    private void sendUsageOrDeny(CommandSender sender) {
+        if (ALL_PERMS.stream().noneMatch(sender::hasPermission)) {
+            denyPermission(sender);
+            return;
+        }
+        sendUsage(sender);
+    }
+
+    private boolean checkPermission(CommandSender sender, String permission) {
+        if (sender.hasPermission(permission)) return true;
+        denyPermission(sender);
+        return false;
+    }
+
+    private void denyPermission(CommandSender sender) {
+        sender.sendMessage(Component.text(msg().get("command.no-permission"), NamedTextColor.RED));
     }
 
     private void handleSet(CommandSender sender, String[] args) {
@@ -141,20 +163,7 @@ public class HammrCommand implements TabExecutor {
             return;
         }
 
-        EnhanceData data = PDCAdapter.readData(meta);
-        Enchantment mainEnch = LoreBuilder.getMainEnchant(item.getType());
-        if (mainEnch != null && data.mainLevel() > 0) {
-            meta.removeEnchant(mainEnch);
-        }
-        for (var entry : data.branches().entrySet()) {
-            Enchantment branchEnch = BranchPool.toEnchantment(entry.getKey());
-            if (branchEnch != null) {
-                meta.removeEnchant(branchEnch);
-            }
-        }
-
-        PDCAdapter.writeData(meta, EnhanceData.EMPTY);
-        meta.lore(LoreBuilder.buildLore(EnhanceData.EMPTY));
+        EnhanceManager.writeItem(meta, item.getType(), EnhanceData.EMPTY);
         item.setItemMeta(meta);
 
         sender.sendMessage(Component.text(msg().get("command.remove-success"), NamedTextColor.GREEN));
@@ -236,43 +245,21 @@ public class HammrCommand implements TabExecutor {
         ItemMeta meta = item.getItemMeta();
         if (meta == null) return;
 
-        Enchantment mainEnch = LoreBuilder.getMainEnchant(item.getType());
-        if (mainEnch != null) {
-            if (mainLevel > 0) {
-                meta.addEnchant(mainEnch, mainLevel, true);
-            } else {
-                meta.removeEnchant(mainEnch);
-            }
-        }
-
         Map<String, Integer> branches = new LinkedHashMap<>();
         if (branchType != null && branchLevel > 0) {
             branches.put(branchType, branchLevel);
         }
 
-        String equipType = ItemChecker.getEquipType(item);
-        List<String> poolKeys = BranchPool.getPoolKeys(equipType);
-        if (poolKeys != null) {
-            for (String key : poolKeys) {
-                Enchantment ench = BranchPool.toEnchantment(key);
-                if (ench != null) meta.removeEnchant(ench);
-            }
-        }
-        Enchantment newEnch = branchType != null ? BranchPool.toEnchantment(branchType) : null;
-        if (newEnch != null && branchLevel > 0) {
-            meta.addEnchant(newEnch, branchLevel, true);
-        }
-
-        EnhanceData data = new EnhanceData(mainLevel, branches);
-        PDCAdapter.writeData(meta, data);
-        meta.lore(LoreBuilder.buildLore(data));
+        EnhanceManager.writeItem(meta, item.getType(), new EnhanceData(mainLevel, branches));
         item.setItemMeta(meta);
     }
 
     private void handleReload(CommandSender sender) {
-        HammrEnhance.getInstance().reloadConfig();
-        HammrEnhance.getInstance().getSettings().reload();
-        HammrEnhance.getInstance().getMessages().reload();
+        HammrEnhance plugin = HammrEnhance.getInstance();
+        plugin.reloadConfig();
+        plugin.getSettings().reload();
+        plugin.getMessages().reload();
+        plugin.getEconomyManager().prepareIncomeAccount(plugin.getSettings().getIncomeAccount());
         sender.sendMessage(Component.text(msg().get("command.reload-success"), NamedTextColor.GREEN));
     }
 
@@ -289,7 +276,10 @@ public class HammrCommand implements TabExecutor {
         List<String> completions = new ArrayList<>();
         var settings = HammrEnhance.getInstance().getSettings();
         if (args.length == 1) {
-            completions.addAll(List.of("set", "remove", "give", "reload"));
+            if (sender.hasPermission(PERM_SET)) completions.add("set");
+            if (sender.hasPermission(PERM_REMOVE)) completions.add("remove");
+            if (sender.hasPermission(PERM_GIVE)) completions.add("give");
+            if (sender.hasPermission(PERM_RELOAD)) completions.add("reload");
         } else if (args.length == 2 && args[0].equalsIgnoreCase("give")) {
             return null;
         } else if (args.length == 3 && (args[0].equalsIgnoreCase("set") || args[0].equalsIgnoreCase("give"))) {

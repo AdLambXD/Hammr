@@ -38,8 +38,15 @@ public final class PDCAdapter {
         return new EnhanceData(main, branches, xp);
     }
 
+    /**
+     * 该物品是否被本插件锻造过。三个键任意存在即视为有强化数据，
+     * 仅凭原版附魔(附魔台/村民/指令)不算。
+     */
     public static boolean isEnhanced(@NotNull ItemMeta meta) {
-        return meta.getPersistentDataContainer().has(MAIN_KEY, PersistentDataType.INTEGER);
+        PersistentDataContainer pdc = meta.getPersistentDataContainer();
+        return pdc.has(MAIN_KEY, PersistentDataType.INTEGER)
+                || pdc.has(BRANCHES_KEY, PersistentDataType.LIST.strings())
+                || pdc.has(XP_KEY, PersistentDataType.INTEGER);
     }
 
     private static void setBranches(PersistentDataContainer pdc, NamespacedKey key, Map<String, Integer> branches) {

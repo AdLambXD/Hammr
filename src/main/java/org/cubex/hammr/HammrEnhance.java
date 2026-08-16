@@ -28,6 +28,7 @@ public class HammrEnhance extends JavaPlugin {
         if (!economyManager.isEnabled()) {
             getLogger().warning(getMessages().get("log.vault-not-found"));
         }
+        economyManager.prepareIncomeAccount(configSettings.getIncomeAccount());
 
         getServer().getPluginManager().registerEvents(new AnvilListener(), this);
         getServer().getPluginManager().registerEvents(new XpListener(), this);

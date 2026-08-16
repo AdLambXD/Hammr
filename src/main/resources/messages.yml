@@ -4,6 +4,7 @@
 
 # 错误提示
 error:
+  no-permission: "你没有使用强化系统的权限。"
   meta-null: "物品数据异常"
   main-maxed: "主强化已达最高等级！"
   need-ingot: "需要下界合金锭！"
@@ -65,6 +66,7 @@ preview:
 
 # 命令系统
 command:
+  no-permission: "你没有权限使用该命令。"
   player-only: "只有玩家可以使用此命令。"
   usage-set: "用法: /hammr set <主等级> [分支类型] [分支等级]"
   usage-give: "用法: /hammr give <玩家> <主等级> [分支类型] [分支等级]"
