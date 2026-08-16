@@ -172,6 +172,8 @@ public class AnvilListener implements Listener {
         // 必须先消耗输入槽：关闭铁砧时 Bukkit 会把输入槽里的物品退还玩家，
         // 若留到爆炸分支之后再清空就会出现"原件退回 + 成品掉落"的复制。
         inv.setItem(0, null);
+        // 结果槽同样要清空：预览物品留到关闭铁砧会被退还，与成品叠加造成复制
+        inv.setItem(2, null);
         if (right.getAmount() > 1) {
             right.setAmount(right.getAmount() - 1);
             inv.setItem(1, right);
