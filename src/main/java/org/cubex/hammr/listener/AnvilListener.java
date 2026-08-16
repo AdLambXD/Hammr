@@ -13,6 +13,7 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.ClickType;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.PrepareAnvilEvent;
 import org.bukkit.inventory.AnvilInventory;
 import org.bukkit.inventory.ItemStack;
@@ -108,6 +109,31 @@ public class AnvilListener implements Listener {
             view.setRepairItemCountCost(1);
             view.bypassEnchantmentLevelRestriction(true);
             bypassedViews.add(event.getView());
+        }
+    }
+
+    /**
+     * 玩家在铁砧里放入装备+材料出现本插件预览后，未点击结果槽直接关闭界面，
+     * Paper 会把结果槽里的预览物品退还玩家。此时若不清掉预览就会"原件退回 + 预览
+     * 退还"双份复制装备。本事件在界面关闭时清掉残留预览并复位越级附魔豁免。
+     */
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onAnvilClose(InventoryCloseEvent event) {
+        if (!(event.getInventory() instanceof AnvilInventory inv)) return;
+        if (!(event.getView() instanceof AnvilView view)) return;
+
+        boolean reset = false;
+        ItemStack current = inv.getItem(2);
+        if (current != null && isHammrPreview(current)) {
+            inv.setItem(2, null);
+            reset = true;
+        }
+        if (bypassedViews.remove(event.getView())) {
+            view.bypassEnchantmentLevelRestriction(false);
+            reset = true;
+        }
+        if (reset && event.getPlayer() instanceof Player player) {
+            player.updateInventory();
         }
     }
 

@@ -12,6 +12,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.cubex.hammr.HammrEnhance;
 import org.cubex.hammr.config.MessageProvider;
+import org.cubex.hammr.config.ConfigSettings;
 import org.cubex.hammr.enhancement.BranchPool;
 import org.cubex.hammr.enhancement.EnhanceManager;
 import org.cubex.hammr.storage.EnhanceData;
@@ -287,9 +288,9 @@ public class HammrCommand implements TabExecutor {
                 completions.add(String.valueOf(i));
             }
         } else if (args.length == 4 && (args[0].equalsIgnoreCase("set") || args[0].equalsIgnoreCase("give"))) {
-            completions.addAll(settings.getBranchPool("SWORD"));
-            completions.addAll(settings.getBranchPool("AXE"));
-            completions.addAll(settings.getBranchPool("HELMET"));
+            addPoolCompletions(completions, settings, "SWORD");
+            addPoolCompletions(completions, settings, "AXE");
+            addPoolCompletions(completions, settings, "HELMET");
             completions.add("random");
         } else if (args.length == 5 && (args[0].equalsIgnoreCase("set") || args[0].equalsIgnoreCase("give"))) {
             for (int i = 0; i <= settings.getBranchMaxLevel(); i++) {
@@ -297,5 +298,13 @@ public class HammrCommand implements TabExecutor {
             }
         }
         return completions;
+    }
+
+    /** 配置中该装备类型的分支池可能被清空(跳过空池)，此时 getBranchPool 返回 null，需判空 */
+    private void addPoolCompletions(List<String> completions, ConfigSettings settings, String type) {
+        List<String> pool = settings.getBranchPool(type);
+        if (pool != null) {
+            completions.addAll(pool);
+        }
     }
 }
