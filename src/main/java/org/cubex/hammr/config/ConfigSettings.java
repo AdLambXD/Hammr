@@ -146,7 +146,8 @@ public final class ConfigSettings {
         }
 
         // progress bar
-        progressBarWidth = cfg.getInt("progress-bar.width", 25);
+        // 限幅：过大的宽度会生成超长 Lore 字符串，可能撑爆物品数据包
+        progressBarWidth = Math.max(1, Math.min(cfg.getInt("progress-bar.width", 25), 64));
         progressBarFilledColor = cfg.getString("progress-bar.filled-color", "§a");
         progressBarEmptyColor = cfg.getString("progress-bar.empty-color", "§8");
         progressBarSuffixColor = cfg.getString("progress-bar.suffix-color", "§f");

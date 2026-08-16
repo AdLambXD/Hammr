@@ -12,9 +12,29 @@ commands:
   hammr:
     description: HammrEnhance 管理命令
     usage: /hammr <set|remove|give|reload>
-    permission: hammr.admin
 
 permissions:
+  hammr.use:
+    description: 允许在铁砧上使用强化系统
+    default: true
+  hammr.command.set:
+    description: 允许使用 /hammr set
+    default: op
+  hammr.command.remove:
+    description: 允许使用 /hammr remove
+    default: op
+  hammr.command.give:
+    description: 允许使用 /hammr give
+    default: op
+  hammr.command.reload:
+    description: 允许使用 /hammr reload
+    default: op
   hammr.admin:
     description: 允许使用所有 HammrEnhance 管理命令
     default: op
+    children:
+      hammr.use: true
+      hammr.command.set: true
+      hammr.command.remove: true
+      hammr.command.give: true
+      hammr.command.reload: true

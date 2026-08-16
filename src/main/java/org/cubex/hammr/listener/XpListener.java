@@ -1,6 +1,5 @@
 package org.cubex.hammr.listener;
 
-import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -10,6 +9,7 @@ import org.bukkit.event.player.PlayerExpChangeEvent;
 import org.bukkit.inventory.ItemStack;
 import org.cubex.hammr.HammrEnhance;
 import org.cubex.hammr.enhancement.EnhanceManager;
+import org.cubex.hammr.util.ItemChecker;
 
 public class XpListener implements Listener {
 
@@ -21,37 +21,29 @@ public class XpListener implements Listener {
         int xp = HammrEnhance.getInstance().getSettings().getXpFromExpOrb();
         if (xp <= 0) return;
 
-        ItemStack main = player.getInventory().getItemInMainHand();
-        if (main.getType() != Material.AIR) {
-            EnhanceManager.addItemXp(main, xp);
-        }
-
-        ItemStack off = player.getInventory().getItemInOffHand();
-        if (off.getType() != Material.AIR) {
-            EnhanceManager.addItemXp(off, xp);
-        }
-
+        addXp(player.getInventory().getItemInMainHand(), xp);
+        addXp(player.getInventory().getItemInOffHand(), xp);
         for (ItemStack armor : player.getInventory().getArmorContents()) {
-            if (armor != null && armor.getType() != Material.AIR) {
-                EnhanceManager.addItemXp(armor, xp);
-            }
+            addXp(armor, xp);
         }
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onBlockBreak(BlockBreakEvent event) {
-        Player player = event.getPlayer();
-        ItemStack item = player.getInventory().getItemInMainHand();
-        if (item.getType() == Material.AIR) return;
-
-        Material type = item.getType();
-        boolean isTool = type.name().contains("_PICKAXE") || type.name().contains("_AXE")
-                || type.name().contains("_SHOVEL") || type.name().contains("_HOE");
-        if (!isTool) return;
-
         int xp = HammrEnhance.getInstance().getSettings().getBlockBreakXp();
-        if (xp > 0) {
-            EnhanceManager.addItemXp(item, xp);
-        }
+        if (xp <= 0) return;
+
+        ItemStack item = event.getPlayer().getInventory().getItemInMainHand();
+        if (ItemChecker.isArmor(item)) return;
+        addXp(item, xp);
+    }
+
+    /**
+     * 只有下界合金装备可能带强化数据。先做一次廉价的材质判断，
+     * 避免每颗经验球 / 每次挖掘都为无关物品克隆一次 ItemMeta。
+     */
+    private void addXp(ItemStack item, int xp) {
+        if (!ItemChecker.isNetheriteEquipment(item)) return;
+        EnhanceManager.addItemXp(item, xp);
     }
 }
