@@ -240,7 +240,8 @@ public class AnvilListener implements Listener {
         if (!ItemChecker.hasBranchPool(item)) return false;
         ItemMeta meta = item.getItemMeta();
         if (meta == null) return false;
-        return data.canBranch(BranchPool.totalLevel(meta, item.getType(), data));
+        // 满级门槛用持久值(底子快照+PDC 累计)，防止磨刀石清掉真实附魔后重置门槛
+        return data.canBranch(BranchPool.effectiveTotalLevel(meta, item.getType(), data));
     }
 
     private boolean isHammrPreview(ItemStack item) {

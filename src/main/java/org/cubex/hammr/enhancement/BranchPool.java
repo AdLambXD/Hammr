@@ -6,12 +6,14 @@ import org.bukkit.enchantments.Enchantment;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.cubex.hammr.HammrEnhance;
 import org.cubex.hammr.storage.EnhanceData;
+import org.cubex.hammr.storage.PDCAdapter;
 import org.cubex.hammr.util.ItemChecker;
 import org.jetbrains.annotations.Nullable;
 import io.papermc.paper.registry.RegistryAccess;
 import io.papermc.paper.registry.RegistryKey;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -42,6 +44,29 @@ public final class BranchPool {
             if (level > 0) total += level;
         }
         return total;
+    }
+
+    /**
+     * 满级判定用的分支等级：取「物品当前真实附魔之和」与「底子快照 + PDC 分支累计值」的较大者。
+     * 磨刀石能清掉物品上的真实附魔，却清不掉 PDC 里的累计记录，只用真实附魔做门槛时
+     * 会被磨刀石重置后无限刷等级；持久值保证磨刀石之后依旧不放行。
+     */
+    public static int effectiveTotalLevel(ItemMeta meta, Material type, EnhanceData data) {
+        int realTotal = totalLevel(meta, type, data);
+        if (meta == null) return realTotal;
+        List<String> pool = getPool(ItemChecker.getEquipType(type));
+        Set<String> keys = new LinkedHashSet<>();
+        if (pool != null) keys.addAll(pool);
+        keys.addAll(data.branches().keySet());
+        Map<String, Integer> bases = PDCAdapter.readBaseEnchants(meta);
+        int persistentTotal = 0;
+        for (String key : keys) {
+            Enchantment ench = toEnchantment(key);
+            if (ench == null) continue;
+            int persistent = bases.getOrDefault(key, 0) + data.branches().getOrDefault(key, 0);
+            if (persistent > 0) persistentTotal += persistent;
+        }
+        return Math.max(realTotal, persistentTotal);
     }
 
     @Nullable

@@ -142,8 +142,9 @@ public class EnhanceManager {
         if (data.mainLevel() < reqMainLevel) {
             return EnhanceResult.error(msg().get("error.low-main-for-branch", reqMainLevel));
         }
-        // 分支等级 = 分支池附魔的真实等级之和(含强化前的原版基础附魔)，与主强化按等级判定一致
-        int totalBranchLevel = BranchPool.totalLevel(meta, item.getType(), data);
+        // 分支等级 = 分支池附魔的真实等级之和(含强化前的原版基础附魔)，与主强化按等级判定一致；
+        // 满级门槛用持久值(底子快照+PDC 累计)兜底，防止磨刀石清掉真实附魔后重置门槛无限刷级
+        int totalBranchLevel = BranchPool.effectiveTotalLevel(meta, item.getType(), data);
         if (data.isBranchMaxed(totalBranchLevel)) {
             return EnhanceResult.error(msg().get("error.branch-maxed"));
         }
@@ -203,7 +204,9 @@ public class EnhanceManager {
                                                     ItemMeta meta, EnhanceData data, List<String> available) {
         String branchType = available.get(ThreadLocalRandom.current().nextInt(available.size()));
 
-        int newLevel = data.branches().getOrDefault(branchType, 0) + 1;
+        int branchMaxLevel = cfg().getBranchMaxLevel();
+        // 单分支 PDC 累计值封顶，避免磨刀石循环让同一分支越界
+        int newLevel = Math.min(data.branches().getOrDefault(branchType, 0) + 1, branchMaxLevel);
         Enchantment newEnch = BranchPool.toEnchantment(branchType);
 
         EnhanceData newData = data.withBranch(branchType, newLevel);
@@ -405,6 +408,7 @@ public class EnhanceManager {
         if (!PDCAdapter.isEnhanced(meta)) return;
         EnhanceData data = PDCAdapter.readData(meta);
         if (!data.hasMain() && !data.hasBranch()) return;
+        if (data.isMainMaxed()) return;   // 主等级已满级不再吸收经验
         int req = data.xpRequired();
         if (req <= 0) return;
         int newXp = Math.min(data.xpPoints() + amount, req);
