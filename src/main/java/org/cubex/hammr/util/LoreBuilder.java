@@ -20,14 +20,10 @@ public final class LoreBuilder {
         meta.lore(lore.isEmpty() ? null : lore);
     }
 
-    /** 让 Lore 中的主等级直接显示物品当前的主附魔等级。 */
+    /** 让 Lore 中的主等级等于 PDC 里实际设置的强化等级，底子叠加不显示在 Lore 里。 */
     public static void applyLore(org.bukkit.inventory.meta.ItemMeta meta,
                                  org.bukkit.Material material, EnhanceData data) {
-        Enchantment mainEnchant = getMainEnchant(material);
-        int displayMainLevel = mainEnchant == null
-                ? data.mainLevel()
-                : meta.getEnchantLevel(mainEnchant);
-        var lore = buildLore(data, displayMainLevel, BranchPool.totalLevel(meta, material, data));
+        var lore = buildLore(data, data.mainLevel(), BranchPool.totalLevel(meta, material, data));
         meta.lore(lore.isEmpty() ? null : lore);
     }
 
