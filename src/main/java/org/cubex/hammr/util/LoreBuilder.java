@@ -19,14 +19,29 @@ public final class LoreBuilder {
         meta.lore(lore.isEmpty() ? null : lore);
     }
 
+    /** 让 Lore 中的主等级直接显示物品当前的主附魔等级。 */
+    public static void applyLore(org.bukkit.inventory.meta.ItemMeta meta,
+                                 org.bukkit.Material material, EnhanceData data) {
+        Enchantment mainEnchant = getMainEnchant(material);
+        int displayMainLevel = mainEnchant == null
+                ? data.mainLevel()
+                : meta.getEnchantLevel(mainEnchant);
+        var lore = buildLore(data, displayMainLevel);
+        meta.lore(lore.isEmpty() ? null : lore);
+    }
+
     public static java.util.List<Component> buildLore(EnhanceData data) {
+        return buildLore(data, data.mainLevel());
+    }
+
+    private static java.util.List<Component> buildLore(EnhanceData data, int displayMainLevel) {
         var lore = new java.util.ArrayList<Component>();
         if (data.mainLevel() <= 0 && !data.hasBranch()) return lore;
 
         var settings = HammrEnhance.getInstance().getSettings();
         StringBuilder sb = new StringBuilder();
 
-        String levelTag = "[+" + data.mainLevel();
+        String levelTag = "[+" + displayMainLevel;
         if (data.branchLevel() > 0) {
             levelTag += "(" + data.branchLevel() + ")";
         }
@@ -68,7 +83,12 @@ public final class LoreBuilder {
         String equipType = ItemChecker.getEquipType(material);
         String key = HammrEnhance.getInstance().getSettings().getMainEnchantKey(equipType);
         if (key == null || key.isEmpty()) return null;
-        return RegistryAccess.registryAccess().getRegistry(RegistryKey.ENCHANTMENT).get(NamespacedKey.minecraft(key));
+        try {
+            return RegistryAccess.registryAccess().getRegistry(RegistryKey.ENCHANTMENT)
+                    .get(NamespacedKey.minecraft(key));
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
     }
 
     public static String getEnchantDisplayName(Enchantment ench) {
