@@ -22,6 +22,8 @@ public final class ConfigSettings {
     private int branchMaxLevel;
     private int branchMinMainLevel;
     private int xpMultiplier;
+    private int xpBase;
+    private double xpExponent;
     private int blockBreakXp;
     private int mainMaterialThreshold;
     private boolean broadcastOnMaxLevel;
@@ -59,13 +61,13 @@ public final class ConfigSettings {
         mainSuccessRates = cfg.getIntegerList("main-success-rates")
                 .stream().mapToInt(Integer::intValue).toArray();
         if (mainSuccessRates.length == 0) {
-            mainSuccessRates = new int[]{95, 95, 95, 95, 95, 85, 75, 60, 40, 30};
+            mainSuccessRates = new int[]{92, 90, 88, 86, 82, 74, 64, 50, 38, 28};
         }
 
         branchSuccessRates = cfg.getIntegerList("branch-success-rates")
                 .stream().mapToInt(Integer::intValue).toArray();
         if (branchSuccessRates.length == 0) {
-            branchSuccessRates = new int[]{40, 35, 25, 15, 10};
+            branchSuccessRates = new int[]{40, 36, 32, 28, 24};
         }
 
         costGold = cfg.getInt("cost-gold", 1000);
@@ -76,13 +78,16 @@ public final class ConfigSettings {
         incomeAccount = cfg.getString("income-account", "");
         if (incomeAccount == null) incomeAccount = "";
 
-        levelDownChance = cfg.getDouble("level-down-chance", 0.25);
-        explosionChance = cfg.getDouble("explosion-chance", 0.10);
+        levelDownChance = cfg.getDouble("level-down-chance", 0.12);
+        explosionChance = cfg.getDouble("explosion-chance", 0.03);
 
         mainMaxLevel = cfg.getInt("main-max-level", 10);
         branchMaxLevel = cfg.getInt("branch-max-level", 6);
         branchMinMainLevel = cfg.getInt("branch-min-main-level", 8);
         xpMultiplier = cfg.getInt("xp-multiplier", 50);
+        // 经验需求公式: xpExponent > 0 时用 xp-base × 主等级^xp-exponent, 否则回退到旧版线性公式
+        xpBase = cfg.getInt("xp-base", 5);
+        xpExponent = cfg.getDouble("xp-exponent", 2.5);
         blockBreakXp = cfg.getInt("block-break-xp", 1);
         mainMaterialThreshold = cfg.getInt("main-material-threshold", 6);
         xpFromExpOrb = cfg.getInt("xp-from-exp-orb", 1);
@@ -218,6 +223,14 @@ public final class ConfigSettings {
         return xpMultiplier;
     }
 
+    public int getXpBase() {
+        return xpBase;
+    }
+
+    public double getXpExponent() {
+        return xpExponent;
+    }
+
     public int getBlockBreakXp() {
         return blockBreakXp;
     }
@@ -255,6 +268,9 @@ public final class ConfigSettings {
     }
 
     public int getXpRequired(int mainLevel) {
+        if (xpExponent > 0) {
+            return (int) Math.round(xpBase * Math.pow(mainLevel, xpExponent));
+        }
         return mainLevel * xpMultiplier;
     }
 

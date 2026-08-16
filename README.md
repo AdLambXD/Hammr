@@ -4,7 +4,7 @@
 
 **下界合金装备铁砧强化系统**
 
-![版本](https://img.shields.io/badge/版本-1.2.0-blue)
+![版本](https://img.shields.io/badge/版本-1.4.0-blue)
 ![Minecraft](https://img.shields.io/badge/Minecraft-1.21.4+-brightgreen)
 ![Java](https://img.shields.io/badge/Java-21-orange)
 ![Paper](https://img.shields.io/badge/API-Paper-blueviolet)
@@ -64,7 +64,7 @@ HammrEnhance 是一款基于 **Paper** 的 Minecraft 插件，为下界合金装
 - **💥 失败惩罚机制**：失败有概率掉级（`level-down-chance`）与铁砧爆炸（`explosion-chance`），爆炸时装备会被炸落到地面，紧张感拉满。
 - **💰 Vault 经济支持**：可选接入 [Vault](https://github.com/MilkBowl/Vault)，按等级扣费；未安装 Vault 时自动跳过金币消耗。
 - **📦 数据安全持久化**：强化数据写入物品 **PDC**（Persistent Data Container），装备放入箱子、随身携带、重启服务器都不会丢失。
-- **🔧 高度可配置**：成功率、等级上限、材料类型、分支池、主附魔映射、经验倍率、进度条样式等全部可在 `config.yml` 中调整。
+- **🔧 高度可配置**：成功率、等级上限、材料类型、分支池、主附魔映射、经验公式、进度条样式等全部可在 `config.yml` 中调整。
 - **🌐 全量中文消息**：所有提示、ActionBar、物品名、附魔名均通过 `messages.yml` 管理，可自由修改文案与颜色代码。
 
 ---
@@ -104,7 +104,7 @@ HammrEnhance 是一款基于 **Paper** 的 Minecraft 插件，为下界合金装
        ◆ 主强化
        消耗: 钻石 x1 + 1000 金币
        点击取出以执行
-4. 点击取出，扣费并执行强化（当前等级 +1 → 有 95% 成功率）。
+4. 点击取出，扣费并执行强化（当前等级 +1 → 有 92% 成功率）。
 5. 将剑拿起，Lore 显示 [+1] 与经验进度条。
 6. 当主等级达到 +8 后：
    → 再次放入铁砧 + 钻石，将进行【分支强化】，
@@ -131,7 +131,7 @@ HammrEnhance 是一款基于 **Paper** 的 Minecraft 插件，为下界合金装
 | 项目 | 数值 | 说明 |
 | --- | --- | --- |
 | 金币 | 1000 / 次 | 可用 `cost-gold-per-level` 按等级区分 |
-| 经验 | `主等级 × xp-multiplier` 级 | 例如 +3 → +4 需 300 级经验 |
+| 经验 | `xp-base × 主等级^xp-exponent` 点 | 例如 +2 → +3 需 28 点（5 × 2^2.5），+9 → +10 需 1215 点 |
 
 > 💡 **经验替代**：当装备自身积累的经验达到要求时，会优先消耗装备经验，无需扣除玩家经验值。
 
@@ -139,7 +139,7 @@ HammrEnhance 是一款基于 **Paper** 的 Minecraft 插件，为下界合金装
 
 | 目标等级 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 成功率 | 95% | 95% | 95% | 95% | 95% | 85% | 75% | 60% | 40% | 30% |
+| 成功率 | 92% | 90% | 88% | 86% | 82% | 74% | 64% | 50% | 38% | 28% |
 
 **主附魔映射**（默认）：
 
@@ -174,14 +174,14 @@ HammrEnhance 是一款基于 **Paper** 的 Minecraft 插件，为下界合金装
 
 | 分支等级 | 1 | 2 | 3 | 4 | 5 |
 | --- | --- | --- | --- | --- | --- |
-| 成功率 | 40% | 35% | 30% | 25% | 20% |
+| 成功率 | 40% | 36% | 32% | 28% | 24% |
 
 ### 3. 装备经验系统
 
 - **经验来源**：
   - 使用工具（镐 / 斧 / 锹 / 锄）挖掘方块：+`block-break-xp`（默认 1）
   - 拾取经验球时，主手 / 副手 / 盔甲栏装备：+`xp-from-exp-orb`（默认 1）
-- **经验用途**：`主等级 × xp-multiplier` = 升级所需装备经验，累积满后主强化不再消耗玩家经验。
+- **经验用途**：`xp-base × 主等级^xp-exponent` = 升级所需装备经验，累积满后主强化不再消耗玩家经验。
 - **展示**：Lore 中显示进度条，样式（宽度、颜色、字符、百分比格式）可在 `progress-bar` 节点配置。
 
 ### 4. 失败与爆炸机制
@@ -189,8 +189,8 @@ HammrEnhance 是一款基于 **Paper** 的 Minecraft 插件，为下界合金装
 | 事件 | 概率（默认） | 后果 |
 | --- | --- | --- |
 | 主强化失败 | 1 - 成功率 | 不掉级 |
-| 主强化失败 + 掉级 | `level-down-chance`（20%） | 主等级 -1（掉到 0 时清除全部强化） |
-| 铁砧爆炸 | `explosion-chance`（5%） | 关闭铁砧界面，装备被炸落到铁砧位置地面，铁砧被摧毁并产生小范围爆炸（`explosion-radius`） |
+| 主强化失败 + 掉级 | `level-down-chance`（12%） | 主等级 -1（掉到 0 时清除全部强化） |
+| 铁砧爆炸 | `explosion-chance`（3%） | 关闭铁砧界面，装备被炸落到铁砧位置地面，铁砧被摧毁并产生小范围爆炸（`explosion-radius`） |
 
 > 💥 主强化和分支强化都可能触发爆炸；分支强化失败**不会**掉级，仅损失材料。
 
@@ -250,17 +250,18 @@ HammrEnhance 是一款基于 **Paper** 的 Minecraft 插件，为下界合金装
 
 | 节点 | 默认值 | 说明 |
 | --- | --- | --- |
-| `main-success-rates` | `[95, 95, 95, 95, 95, 85, 75, 60, 40, 30]` | 主强化各级成功率（%），第 N 个值表示 +N → +N+1 |
-| `branch-success-rates` | `[40, 35, 30, 25, 20]` | 分支强化各级成功率（%） |
+| `main-success-rates` | `[92, 90, 88, 86, 82, 74, 64, 50, 38, 28]` | 主强化各级成功率（%），第 N 个值表示 +N → +N+1 |
+| `branch-success-rates` | `[40, 36, 32, 28, 24]` | 分支强化各级成功率（%） |
 | `main-max-level` | `10` | 主强化最高等级 |
 | `branch-max-level` | `6` | 分支强化最高总等级 |
 | `branch-min-main-level` | `8` | 分支强化所需最低主等级 |
 | `cost-gold` | `1000` | 单次强化金币消耗（`cost-gold-per-level` 为空时使用） |
 | `cost-gold-per-level` | `[]` | 按等级的消耗列表（长度不够时取最后一个值），优先级高于 `cost-gold` |
-| `level-down-chance` | `0.2` | 主强化失败掉级概率（0.0 ～ 1.0） |
-| `explosion-chance` | `0.05` | 铁砧爆炸概率（0.0 ～ 1.0） |
+| `level-down-chance` | `0.12` | 主强化失败掉级概率（0.0 ～ 1.0） |
+| `explosion-chance` | `0.03` | 铁砧爆炸概率（0.0 ～ 1.0） |
 | `explosion-radius` | `2.0` | 铁砧爆炸半径 |
-| `xp-multiplier` | `100` | 每级所需装备经验 = 主等级 × 倍率 |
+| `xp-base` | `5` | 装备经验需求公式系数 = xp-base × 主等级^xp-exponent |
+| `xp-exponent` | `2.5` | 经验需求指数（设为 0 时回退为旧版线性 `主等级 × xp-multiplier`） |
 | `block-break-xp` | `1` | 挖掘方块获得的装备经验 |
 | `xp-from-exp-orb` | `1` | 拾取经验球获得的装备经验 |
 | `main-material-threshold` | `6` | 主强化材料切换等级（低于此值用低级材料，否则用高级材料） |
@@ -282,10 +283,10 @@ HammrEnhance 是一款基于 **Paper** 的 Minecraft 插件，为下界合金装
 
 # 主强化各等级成功率 (%) - 按等级顺序
 # 第1个值表示从 +1 强化到 +2 的成功率, 以此类推
-main-success-rates: [95, 95, 95, 95, 95, 85, 75, 60, 40, 30]
+main-success-rates: [92, 90, 88, 86, 82, 74, 64, 50, 38, 28]
 
 # 分支强化各等级成功率 (%) - 按等级顺序
-branch-success-rates: [40, 35, 30, 25, 20]
+branch-success-rates: [40, 36, 32, 28, 24]
 
 # 主强化最高等级
 main-max-level: 10
@@ -304,16 +305,17 @@ cost-gold: 1000
 cost-gold-per-level: []
 
 # 失败掉级概率 (0.0 - 1.0)
-level-down-chance: 0.2
+level-down-chance: 0.12
 
 # 铁砧爆炸概率 (0.0 - 1.0)
-explosion-chance: 0.05
+explosion-chance: 0.03
 
 # 铁砧爆炸半径
 explosion-radius: 2.0
 
-# 经验值倍率 - 每级主强化所需经验 = 主等级 × 倍率
-xp-multiplier: 100
+# 装备经验需求公式 = xp-base × 主等级^xp-exponent (指数为 0 时回退为线性)
+xp-base: 5
+xp-exponent: 2.5
 
 # 挖掘方块时获得的物品经验值
 block-break-xp: 1
@@ -493,6 +495,13 @@ cd Hammr
 ---
 
 ## 📝 更新日志
+
+### v1.4.0
+- 重塑难度曲线（整体难度近似、形态更平滑）：
+  - 主强化成功率改为前松后紧型 `[92, 90, 88, 86, 82, 74, 64, 50, 38, 28]`
+  - 分支强化成功率同步缓降 `[40, 36, 32, 28, 24]`
+  - 失败惩罚整体下调：掉级概率 20% → 12%，爆炸概率 5% → 3%
+- 装备经验需求从线性倍率改为幂函数公式 `xp-base × 主等级^xp-exponent`（默认 `5 × 主等级^2.5`，前低后高），新增 `xp-base` / `xp-exponent` 配置项，旧版 `xp-multiplier` 自动回退兼容
 
 ### v1.3.3
 - 修复铁砧爆炸时装备被复制的漏洞（输入槽未清空即关闭界面，原件会被退还玩家）
