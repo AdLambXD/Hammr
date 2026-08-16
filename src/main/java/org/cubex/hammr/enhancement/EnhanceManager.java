@@ -307,6 +307,9 @@ public class EnhanceManager {
             Enchantment ench = BranchPool.toEnchantment(key);
             if (ench == null) continue;
             int level = target.getOrDefault(key, 0);
+            // 合成等级(原版底子 + 强化等级)到达上限后钳制，防止预附魔叠加突破等级上限
+            int cap = key.equals(mainKey) ? cfg().getMainMaxLevel() : cfg().getBranchMaxLevel();
+            if (level > cap) level = cap;
             if (level > 0) {
                 meta.addEnchant(ench, level, true);
             } else {
