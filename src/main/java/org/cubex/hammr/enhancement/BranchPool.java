@@ -21,7 +21,13 @@ public final class BranchPool {
     @Nullable
     public static Enchantment toEnchantment(@Nullable String key) {
         if (key == null || key.isEmpty()) return null;
-        return RegistryAccess.registryAccess().getRegistry(RegistryKey.ENCHANTMENT).get(NamespacedKey.minecraft(key));
+        try {
+            return RegistryAccess.registryAccess().getRegistry(RegistryKey.ENCHANTMENT)
+                    .get(NamespacedKey.minecraft(key));
+        } catch (IllegalArgumentException e) {
+            // 配置里写了非法字符(如大写)时 NamespacedKey 会抛异常，不能让它冒到事件里
+            return null;
+        }
     }
 
     public static boolean hasPool(String type) {

@@ -68,7 +68,12 @@ public final class LoreBuilder {
         String equipType = ItemChecker.getEquipType(material);
         String key = HammrEnhance.getInstance().getSettings().getMainEnchantKey(equipType);
         if (key == null || key.isEmpty()) return null;
-        return RegistryAccess.registryAccess().getRegistry(RegistryKey.ENCHANTMENT).get(NamespacedKey.minecraft(key));
+        try {
+            return RegistryAccess.registryAccess().getRegistry(RegistryKey.ENCHANTMENT)
+                    .get(NamespacedKey.minecraft(key));
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
     }
 
     public static String getEnchantDisplayName(Enchantment ench) {

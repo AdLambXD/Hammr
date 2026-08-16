@@ -18,7 +18,11 @@ import org.cubex.hammr.util.ItemChecker;
 import org.cubex.hammr.util.LoreBuilder;
 import org.cubex.hammr.util.RomanNumber;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class EnhanceManager {
@@ -234,43 +238,85 @@ public class EnhanceManager {
      * 调用方负责 {@code item.setItemMeta(meta)}。
      */
     public static void writeItem(ItemMeta meta, Material type, EnhanceData data) {
+        captureBaseEnchants(meta, type);
         applyEnchantments(meta, type, data);
         PDCAdapter.writeData(meta, data);
         LoreBuilder.applyLore(meta, data);
+
+        // 强化清零后物品已被还原成原版状态，快照可以丢弃
+        if (data.mainLevel() <= 0 && !data.hasBranch()) {
+            PDCAdapter.clearBaseEnchants(meta);
+        }
     }
 
     /**
-     * 让物品上由本插件管理的附魔(主附魔 + 分支池附魔)严格等于 PDC 中记录的等级，
-     * 等级为 0 的则移除。这样 [+N] 标记与实际附魔等级永远一致。
+     * 首次锻造时把物品自带的原版附魔等级记下来。强化等级叠加在这个底子之上，
+     * 锻造一把原版锋利 V 的剑得到的是锋利 VI 而不是锋利 I，
+     * 同时 [+N] 只统计本插件给出的等级，不会让原版附魔白嫖强化等级。
+     *
+     * 老版本锻造过、但没有快照的物品：用「当前附魔等级 - 已记录的强化等级」反推底子，
+     * 升级插件后这些装备的实际附魔等级不会发生跳变。
      */
-    public static void applyEnchantments(ItemMeta meta, Material type, EnhanceData data) {
-        Enchantment mainEnch = LoreBuilder.getMainEnchant(type);
-        if (mainEnch != null) {
-            if (data.mainLevel() > 0) {
-                meta.addEnchant(mainEnch, data.mainLevel(), true);
-            } else {
-                meta.removeEnchant(mainEnch);
-            }
-        }
+    private static void captureBaseEnchants(ItemMeta meta, Material type) {
+        if (PDCAdapter.hasBaseEnchants(meta)) return;
 
-        List<String> poolKeys = BranchPool.getPoolKeys(ItemChecker.getEquipType(type));
-        if (poolKeys != null) {
-            for (String key : poolKeys) {
-                if (data.branches().containsKey(key)) continue;
-                Enchantment ench = BranchPool.toEnchantment(key);
-                if (ench != null) meta.removeEnchant(ench);
-            }
-        }
+        EnhanceData stored = PDCAdapter.readData(meta);
+        String mainKey = cfg().getMainEnchantKey(ItemChecker.getEquipType(type));
 
+        Map<String, Integer> bases = new LinkedHashMap<>();
+        for (String key : managedEnchantKeys(type, stored.branches())) {
+            Enchantment ench = BranchPool.toEnchantment(key);
+            if (ench == null) continue;
+            int applied = key.equals(mainKey) ? stored.mainLevel() : 0;
+            applied += stored.branches().getOrDefault(key, 0);
+            int base = meta.getEnchantLevel(ench) - applied;
+            if (base > 0) bases.put(key, base);
+        }
+        PDCAdapter.writeBaseEnchants(meta, bases);
+    }
+
+    /**
+     * 让物品上由本插件管理的附魔等于「原版底子 + PDC 记录的强化等级」，
+     * 归零的则移除。这样 [+N] 标记与实际附魔等级的增量永远一致。
+     */
+    private static void applyEnchantments(ItemMeta meta, Material type, EnhanceData data) {
+        Map<String, Integer> bases = PDCAdapter.readBaseEnchants(meta);
+
+        Map<String, Integer> target = new LinkedHashMap<>(bases);
+        String mainKey = cfg().getMainEnchantKey(ItemChecker.getEquipType(type));
+        if (mainKey != null && !mainKey.isEmpty()) {
+            target.merge(mainKey, data.mainLevel(), Integer::sum);
+        }
         for (var entry : data.branches().entrySet()) {
-            Enchantment branchEnch = BranchPool.toEnchantment(entry.getKey());
-            if (branchEnch == null) continue;
-            if (entry.getValue() > 0) {
-                meta.addEnchant(branchEnch, entry.getValue(), true);
+            target.merge(entry.getKey(), entry.getValue(), Integer::sum);
+        }
+
+        for (String key : managedEnchantKeys(type, bases, data.branches())) {
+            Enchantment ench = BranchPool.toEnchantment(key);
+            if (ench == null) continue;
+            int level = target.getOrDefault(key, 0);
+            if (level > 0) {
+                meta.addEnchant(ench, level, true);
             } else {
-                meta.removeEnchant(branchEnch);
+                meta.removeEnchant(ench);
             }
         }
+    }
+
+    /** 本插件负责维护的附魔键：主附魔 + 分支池 + 快照与强化数据里出现过的 */
+    @SafeVarargs
+    private static Set<String> managedEnchantKeys(Material type, Map<String, Integer>... extra) {
+        String equipType = ItemChecker.getEquipType(type);
+        Set<String> keys = new LinkedHashSet<>();
+
+        String mainKey = cfg().getMainEnchantKey(equipType);
+        if (mainKey != null && !mainKey.isEmpty()) keys.add(mainKey);
+
+        List<String> poolKeys = BranchPool.getPoolKeys(equipType);
+        if (poolKeys != null) keys.addAll(poolKeys);
+
+        for (Map<String, Integer> map : extra) keys.addAll(map.keySet());
+        return keys;
     }
 
     /** 物品经验只在强化成功时清零，这里只做校验 */
