@@ -241,7 +241,7 @@ public class EnhanceManager {
         captureBaseEnchants(meta, type);
         applyEnchantments(meta, type, data);
         PDCAdapter.writeData(meta, data);
-        LoreBuilder.applyLore(meta, data);
+        LoreBuilder.applyLore(meta, type, data);
 
         // 强化清零后物品已被还原成原版状态，快照可以丢弃
         if (data.mainLevel() <= 0 && !data.hasBranch()) {
@@ -252,7 +252,7 @@ public class EnhanceManager {
     /**
      * 首次锻造时把物品自带的原版附魔等级记下来。强化等级叠加在这个底子之上，
      * 锻造一把原版锋利 V 的剑得到的是锋利 VI 而不是锋利 I，
-     * 同时 [+N] 只统计本插件给出的等级，不会让原版附魔白嫖强化等级。
+     * 同时 PDC 中仍只记录本插件给出的等级，不会让原版附魔白嫖强化等级。
      *
      * 老版本锻造过、但没有快照的物品：用「当前附魔等级 - 已记录的强化等级」反推底子，
      * 升级插件后这些装备的实际附魔等级不会发生跳变。
@@ -277,7 +277,7 @@ public class EnhanceManager {
 
     /**
      * 让物品上由本插件管理的附魔等于「原版底子 + PDC 记录的强化等级」，
-     * 归零的则移除。这样 [+N] 标记与实际附魔等级的增量永远一致。
+     * 归零的则移除。Lore 会在写入后直接读取实际主附魔等级用于显示。
      */
     private static void applyEnchantments(ItemMeta meta, Material type, EnhanceData data) {
         Map<String, Integer> bases = PDCAdapter.readBaseEnchants(meta);
@@ -408,7 +408,7 @@ public class EnhanceManager {
         if (newXp == data.xpPoints()) return;
         EnhanceData newData = data.withXP(newXp);
         PDCAdapter.writeData(meta, newData);
-        LoreBuilder.applyLore(meta, newData);
+        LoreBuilder.applyLore(meta, item.getType(), newData);
         item.setItemMeta(meta);
     }
 
