@@ -188,12 +188,18 @@ public class EnhanceManager {
     private static List<String> availableBranches(List<String> pool, EnhanceData data, ItemMeta meta) {
         int branchMaxLevel = cfg().getBranchMaxLevel();
         List<String> available = new ArrayList<>();
+        // 用「真实等级」与「持久值(底子快照 + PDC 累计)」的较大者判断满级：
+        // 磨刀石能清零真实附魔，只认真实等级会让已满级分支重新进入候选池，
+        // 抽中后新等级被 hard cap 但白扣钻石金币；持久值保证磨刀石后依旧不放行
+        Map<String, Integer> bases = PDCAdapter.readBaseEnchants(meta);
         for (String key : pool) {
             // 配置里写错的附魔键直接跳过，避免抽到无法解析的分支
-            if (BranchPool.toEnchantment(key) == null) continue;
             Enchantment ench = BranchPool.toEnchantment(key);
-            // 用含原版基础附魔的真实等级判断是否满级，与分支等级口径一致
-            if (meta.getEnchantLevel(ench) < branchMaxLevel) {
+            if (ench == null) continue;
+            int realLevel = meta.getEnchantLevel(ench);
+            int persistentLevel = bases.getOrDefault(key, 0)
+                    + data.branches().getOrDefault(key, 0);
+            if (Math.max(realLevel, persistentLevel) < branchMaxLevel) {
                 available.add(key);
             }
         }

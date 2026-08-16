@@ -268,10 +268,16 @@ public final class ConfigSettings {
     }
 
     public int getXpRequired(int mainLevel) {
+        // 极端配置(超大 xp-base/xp-exponent)下幂值转 int 会溢出成负数，
+        // 而 hasEnoughXp 对 req<=0 直接放行，等于免费强化；用 double 计算并钳制上限
+        double value;
         if (xpExponent > 0) {
-            return (int) Math.round(xpBase * Math.pow(mainLevel, xpExponent));
+            value = xpBase * Math.pow(mainLevel, xpExponent);
+        } else {
+            value = (double) mainLevel * xpMultiplier;
         }
-        return mainLevel * xpMultiplier;
+        if (value >= Integer.MAX_VALUE) return Integer.MAX_VALUE;
+        return (int) Math.round(value);
     }
 
     // --- branch pools ---
