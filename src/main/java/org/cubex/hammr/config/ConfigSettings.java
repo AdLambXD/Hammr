@@ -184,8 +184,8 @@ public final class ConfigSettings {
 
     public int getCostGold(int level) {
         if (costGoldPerLevel != null && costGoldPerLevel.length > 0) {
-            int idx = Math.min(level, costGoldPerLevel.length) - 1;
-            if (idx < 0) idx = 0;
+            // perLevel[level] 直接索引(0 = 首次强化)，越界钳制到末项
+            int idx = Math.min(Math.max(level, 0), costGoldPerLevel.length - 1);
             return costGoldPerLevel[idx];
         }
         return costGold;

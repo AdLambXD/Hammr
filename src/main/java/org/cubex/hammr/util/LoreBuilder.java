@@ -20,10 +20,14 @@ public final class LoreBuilder {
         meta.lore(lore.isEmpty() ? null : lore);
     }
 
-    /** 让 Lore 中的主等级等于 PDC 里实际设置的强化等级，底子叠加不显示在 Lore 里。 */
+        /** 让 Lore 中的主等级显示物品当前的实际主附魔等级。 */
     public static void applyLore(org.bukkit.inventory.meta.ItemMeta meta,
                                  org.bukkit.Material material, EnhanceData data) {
-        var lore = buildLore(data, data.mainLevel(), BranchPool.totalLevel(meta, material, data));
+        Enchantment mainEnchant = getMainEnchant(material);
+        int displayMainLevel = mainEnchant == null
+                ? data.mainLevel()
+                : meta.getEnchantLevel(mainEnchant);
+        var lore = buildLore(data, displayMainLevel, BranchPool.totalLevel(meta, material, data));
         meta.lore(lore.isEmpty() ? null : lore);
     }
 
@@ -50,9 +54,11 @@ public final class LoreBuilder {
         sb.append("§6§l").append(levelTag);
         lore.add(Component.text(sb.toString()));
 
-        if (data.mainLevel() < settings.getMainMaxLevel()) {
+        if (displayMainLevel < settings.getMainMaxLevel()) {
             StringBuilder bar = new StringBuilder();
-            double pct = data.xpProgress();
+            // 进度条分母与实际显示的主附魔等级一致：预附魔(底子)抬高的等级按真实需求算
+            int req = settings.getXpRequired(displayMainLevel);
+            double pct = req <= 0 ? 1.0 : Math.min(1.0, (double) data.xpPoints() / req);
             int width = settings.getProgressBarWidth();
             int filled = (int) Math.round(pct * width);
             String c = settings.getProgressBarChar();

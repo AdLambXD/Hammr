@@ -26,16 +26,6 @@ public record EnhanceData(int mainLevel, Map<String, Integer> branches, int xpPo
                 : Collections.emptyMap(), xpPoints);
     }
 
-    public int xpRequired() {
-        return HammrEnhance.getInstance().getSettings().getXpRequired(mainLevel);
-    }
-
-    public double xpProgress() {
-        int req = xpRequired();
-        if (req <= 0) return 1.0;
-        return Math.min(1.0, (double) xpPoints / req);
-    }
-
     public int branchLevel() {
         return branches.values().stream().mapToInt(Integer::intValue).sum();
     }

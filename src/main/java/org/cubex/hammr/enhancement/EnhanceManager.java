@@ -56,17 +56,25 @@ public class EnhanceManager {
             return EnhanceResult.error(msg().get("error.need-diamond"));
         }
 
+        // 经验需求按实际主附魔等级计：玩家用附魔书/合成把装备抬到锋利 V 后首次锻造，
+        // 次数为 0 但实际等级是 5，不能再按次数算经验(否则几乎免费)。
+        // 未锻造过的装备没有经验条、无法预先积累经验，首次锻造豁免经验需求；
+        // 已锻造(有经验条)的装备按实际主附魔等级正常收取
+        int reqXp = PDCAdapter.isEnhanced(meta)
+                ? cfg().getXpRequired(effectiveMainLevel(meta, item.getType(), data))
+                : 0;
+
         // 先跑完全部校验再扣钱，否则任何一个后置校验失败都会把金币吞掉
-        if (!hasEnoughXp(data)) {
-            return EnhanceResult.error(msg().get("error.insufficient-xp", String.valueOf(data.xpRequired())));
+        if (!hasEnoughXp(data, reqXp)) {
+            return EnhanceResult.error(msg().get("error.insufficient-xp", String.valueOf(reqXp)));
         }
 
         if (!checkAndDeductGold(player, data.mainLevel())) {
             return EnhanceResult.error(msg().get("error.insufficient-gold", String.valueOf(cfg().getCostGold(data.mainLevel()))));
         }
 
-        int rateIndex = Math.min(data.mainLevel(), cfg().getMainSuccessRates().length - 1);
-        boolean success = ThreadLocalRandom.current().nextInt(100) < cfg().getMainSuccessRate(rateIndex);
+        // 目标等级语义：达到 +N 使用 rates[N-1]，末值(main-max 档)可达
+        boolean success = ThreadLocalRandom.current().nextInt(100) < cfg().getMainSuccessRate(data.mainLevel() + 1);
 
         ItemStack result = item.clone();
         ItemMeta resultMeta = result.getItemMeta();
@@ -80,7 +88,10 @@ public class EnhanceManager {
 
     private static EnhanceResult applyMainSuccess(Player player, ItemStack item,
                                                   ItemMeta meta, EnhanceData data) {
-        int newLevel = data.mainLevel() + 1;
+        // PDC 主等级只记录强化次数，实际附魔 = 首次锻造录入的原版底子 + 强化次数。
+        // 每次锻造固定 +1：即使玩家在两次锻造之间用原版铁砧合成/抄写附魔书抬高了
+        // 实际附魔等级，writeItem 也会按 PDC 次数重写回去，不会发生跳级。
+        int newLevel = Math.min(data.mainLevel() + 1, cfg().getMainMaxLevel());
 
         EnhanceData newData = new EnhanceData(newLevel, data.branches(), 0);
         writeItem(meta, item.getType(), newData);
@@ -94,7 +105,13 @@ public class EnhanceManager {
             broadcastAnnouncement(player, item);
         }
 
-        sendActionBar(player, msg().getComponent("actionbar.main-success", NamedTextColor.GREEN, TextDecoration.BOLD, String.valueOf(newLevel)));
+        // ActionBar 与 Lore 一致，显示当前实际主附魔等级(底子 + 强化次数)
+        int displayLevel = newLevel;
+        Enchantment ench = BranchPool.toEnchantment(cfg().getMainEnchantKey(ItemChecker.getEquipType(item)));
+        if (ench != null) {
+            displayLevel = Math.max(meta.getEnchantLevel(ench), 0);
+        }
+        sendActionBar(player, msg().getComponent("actionbar.main-success", NamedTextColor.GREEN, TextDecoration.BOLD, String.valueOf(displayLevel)));
         return EnhanceResult.success(item, newLevel, BranchPool.totalLevel(meta, item.getType(), newData));
     }
 
@@ -171,8 +188,8 @@ public class EnhanceManager {
             return EnhanceResult.error(msg().get("error.insufficient-gold", String.valueOf(cfg().getCostGold(data.mainLevel()))));
         }
 
-        int rateIndex = Math.min(totalBranchLevel, cfg().getBranchSuccessRates().length - 1);
-        boolean success = ThreadLocalRandom.current().nextInt(100) < cfg().getBranchSuccessRate(rateIndex);
+        // 目标等级语义：达到分支 N 使用 rates[N-1]，与 README 分支等级表一致
+        boolean success = ThreadLocalRandom.current().nextInt(100) < cfg().getBranchSuccessRate(totalBranchLevel + 1);
 
         ItemStack result = item.clone();
         ItemMeta resultMeta = result.getItemMeta();
@@ -262,12 +279,9 @@ public class EnhanceManager {
     }
 
     /**
-     * 首次锻造时把物品自带的原版附魔等级记下来。强化等级叠加在这个底子之上，
-     * 锻造一把原版锋利 V 的剑得到的是锋利 VI 而不是锋利 I，
-     * 同时 PDC 中仍只记录本插件给出的等级，不会让原版附魔白嫖强化等级。
-     *
-     * 老版本锻造过、但没有快照的物品：用「当前附魔等级 - 已记录的强化等级」反推底子，
-     * 升级插件后这些装备的实际附魔等级不会发生跳变。
+     * 首次锻造时把物品自带的原版附魔等级记下来，强化等级叠加在这个底子之上。
+     * 锻造一把原版锋利 V 的剑得到的是锋利 VI 而不是锋利 I；
+     * 已锻造(PDC 已存在)后底子只在第一次进入写流程时录入一次，后续重复写不会覆盖。
      */
     private static void captureBaseEnchants(ItemMeta meta, Material type) {
         if (PDCAdapter.hasBaseEnchants(meta)) return;
@@ -279,7 +293,7 @@ public class EnhanceManager {
         for (String key : managedEnchantKeys(type, stored.branches())) {
             Enchantment ench = BranchPool.toEnchantment(key);
             if (ench == null) continue;
-            int applied = key.equals(mainKey) ? stored.mainLevel() : 0;
+            int applied = mainKey != null && key.equals(mainKey) ? stored.mainLevel() : 0;
             applied += stored.branches().getOrDefault(key, 0);
             int base = meta.getEnchantLevel(ench) - applied;
             if (base > 0) bases.put(key, base);
@@ -289,7 +303,7 @@ public class EnhanceManager {
 
     /**
      * 让物品上由本插件管理的附魔等于「原版底子 + PDC 记录的强化等级」，
-     * 归零的则移除。Lore 会在写入后直接读取实际主附魔等级用于显示。
+     * 归零的则移除。实际附魔以底子快照与 PDC 次数为准：外部附魔(合成/书)被覆盖重置。
      */
     private static void applyEnchantments(ItemMeta meta, Material type, EnhanceData data) {
         Map<String, Integer> bases = PDCAdapter.readBaseEnchants(meta);
@@ -335,10 +349,23 @@ public class EnhanceManager {
     }
 
     /** 物品经验只在强化成功时清零，这里只做校验 */
-    private static boolean hasEnoughXp(EnhanceData data) {
-        int req = data.xpRequired();
+    private static boolean hasEnoughXp(EnhanceData data, int req) {
         if (req <= 0) return true;
         return data.xpPoints() >= req;
+    }
+
+    /**
+     * 经验需求用的「实际主附魔等级」：取真实附魔与持久值(底子快照 + PDC 次数)的较大者。
+     * 与分支 effectiveTotalLevel 对称：磨刀石能清掉真实附魔，清不掉底子快照，
+     * 只用真实等级算经验会随磨刀石重置而免费强化。
+     */
+    private static int effectiveMainLevel(ItemMeta meta, Material type, EnhanceData data) {
+        String mainKey = cfg().getMainEnchantKey(ItemChecker.getEquipType(type));
+        Enchantment ench = mainKey == null || mainKey.isEmpty() ? null : BranchPool.toEnchantment(mainKey);
+        if (ench == null) return data.mainLevel();
+        int real = meta == null ? 0 : meta.getEnchantLevel(ench);
+        int persistent = PDCAdapter.readBaseEnchants(meta).getOrDefault(mainKey, 0) + data.mainLevel();
+        return Math.max(real, persistent);
     }
 
     private static boolean checkAndDeductGold(Player player, int level) {
@@ -418,7 +445,7 @@ public class EnhanceManager {
         EnhanceData data = PDCAdapter.readData(meta);
         if (!data.hasMain() && !data.hasBranch()) return;
         if (data.isMainMaxed()) return;   // 主等级已满级不再吸收经验
-        int req = data.xpRequired();
+        int req = cfg().getXpRequired(effectiveMainLevel(meta, item.getType(), data));
         if (req <= 0) return;
         int newXp = Math.min(data.xpPoints() + amount, req);
         if (newXp == data.xpPoints()) return;
