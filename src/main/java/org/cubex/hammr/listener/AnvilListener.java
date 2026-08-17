@@ -79,18 +79,19 @@ public class AnvilListener implements Listener {
         if (meta == null) return;
         EnhanceData data = PDCAdapter.readData(meta);
 
-        if (!isMainEnhancement(data, hasDiamond, hasIngot)
+        if (!isMainEnhancement(left, data, hasDiamond, hasIngot)
                 && !isBranchEnhancement(left, data, hasDiamond, hasIngot)) {
             event.setResult(null);
             return;
         }
 
-        boolean isMain = isMainEnhancement(data, hasDiamond, hasIngot);
+        boolean isMain = isMainEnhancement(left, data, hasDiamond, hasIngot);
         ItemStack preview = left.clone();
         ItemMeta previewMeta = preview.getItemMeta();
 
-        // 与实际扣费保持一致：配置了 cost-gold-per-level 时预览必须显示当前等级的价格
-        int cost = HammrEnhance.getInstance().getSettings().getCostGold(data.mainLevel());
+        // 与实际扣费保持一致：配置了 cost-gold-per-level 时预览必须显示当前实际主附魔等级的价格
+        int cost = HammrEnhance.getInstance().getSettings()
+                .getCostGold(EnhanceManager.effectiveMainLevel(meta, left.getType(), data));
         String materialName = msg().get(hasIngot ? "material-name.NETHERITE_INGOT" : "material-name.DIAMOND");
 
         List<Component> lore = new ArrayList<>();
@@ -175,7 +176,7 @@ public class AnvilListener implements Listener {
         if (meta == null) return;
         EnhanceData data = PDCAdapter.readData(meta);
 
-        if (!isMainEnhancement(data, hasDiamond, hasIngot) &&
+        if (!isMainEnhancement(left, data, hasDiamond, hasIngot) &&
             !isBranchEnhancement(left, data, hasDiamond, hasIngot)) return;
 
         event.setCancelled(true);
@@ -254,12 +255,16 @@ public class AnvilListener implements Listener {
         }
     }
 
-    private boolean isMainEnhancement(EnhanceData data,
+    private boolean isMainEnhancement(ItemStack item, EnhanceData data,
                                        boolean hasDiamond, boolean hasIngot) {
         if (data.isMainMaxed()) return false;
+        // 材料门槛按实际主附魔等级判定：预附魔/合成的真实等级达标后就该用高级材料
+        ItemMeta meta = item.getItemMeta();
+        int effective = meta == null ? data.mainLevel()
+                : EnhanceManager.effectiveMainLevel(meta, item.getType(), data);
         int threshold = HammrEnhance.getInstance().getSettings().getMainMaterialThreshold();
-        if (data.mainLevel() < threshold && hasDiamond) return true;
-        return data.mainLevel() >= threshold && hasIngot;
+        if (effective < threshold && hasDiamond) return true;
+        return effective >= threshold && hasIngot;
     }
 
     private boolean isBranchEnhancement(ItemStack item, EnhanceData data,
@@ -268,8 +273,10 @@ public class AnvilListener implements Listener {
         if (!ItemChecker.hasBranchPool(item)) return false;
         ItemMeta meta = item.getItemMeta();
         if (meta == null) return false;
-        // 满级门槛用持久值(底子快照+PDC 累计)，防止磨刀石清掉真实附魔后重置门槛
-        return data.canBranch(BranchPool.effectiveTotalLevel(meta, item.getType(), data));
+        // 满级门槛用持久值(底子快照+PDC 累计)，防止磨刀石清掉真实附魔后重置门槛；
+        // 主等级门槛用实际附魔等级判定
+        return data.canBranch(EnhanceManager.effectiveMainLevel(meta, item.getType(), data),
+                BranchPool.effectiveTotalLevel(meta, item.getType(), data));
     }
 
     private boolean isHammrPreview(ItemStack item) {
@@ -286,7 +293,7 @@ public class AnvilListener implements Listener {
         ItemMeta meta = left.getItemMeta();
         if (meta == null) return false;
         EnhanceData data = PDCAdapter.readData(meta);
-        return isMainEnhancement(data, hasDiamond, hasIngot)
+        return isMainEnhancement(left, data, hasDiamond, hasIngot)
                 || isBranchEnhancement(left, data, hasDiamond, hasIngot);
     }
 

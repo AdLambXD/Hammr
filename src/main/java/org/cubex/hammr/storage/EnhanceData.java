@@ -60,10 +60,10 @@ public record EnhanceData(int mainLevel, Map<String, Integer> branches, int xpPo
         return mainLevel >= s.getBranchMinMainLevel() && branchLevel() < s.getBranchMaxLevel();
     }
 
-    /** 分支等级含强化前基础附魔时的分支可用判断 */
-    public boolean canBranch(int totalBranchLevel) {
+    /** 主等级按实际附魔等级(含预附魔底子)判定时的分支可用判断 */
+    public boolean canBranch(int effectiveMainLevel, int totalBranchLevel) {
         var s = HammrEnhance.getInstance().getSettings();
-        return mainLevel >= s.getBranchMinMainLevel() && totalBranchLevel < s.getBranchMaxLevel();
+        return effectiveMainLevel >= s.getBranchMinMainLevel() && totalBranchLevel < s.getBranchMaxLevel();
     }
 
     public EnhanceData withXP(int newXp) {

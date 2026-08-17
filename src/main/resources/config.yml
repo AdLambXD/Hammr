@@ -17,7 +17,7 @@ main-max-level: 10
 branch-max-level: 6
 
 # 分支强化所需最低主等级 (默认: 8)
-branch-min-main-level: 8
+branch-min-main-level: 6
 
 # 每次强化消耗金币 (当 cost-gold-per-level 为空时使用此值)
 cost-gold: 1000

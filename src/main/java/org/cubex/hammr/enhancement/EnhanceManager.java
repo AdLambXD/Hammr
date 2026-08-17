@@ -48,7 +48,11 @@ public class EnhanceManager {
             return EnhanceResult.error(msg().get("error.main-maxed"));
         }
 
-        boolean needsIngot = data.mainLevel() >= cfg().getMainMaterialThreshold();
+        // 实际主附魔等级 = max(真实附魔, 底子快照 + 锻造次数)。材料/经验/金币/成功率
+        // 全部按实际等级计：预附魔(附魔书/合成抬升)的装备不再按低档次数享受低价高成功率
+        int effective = effectiveMainLevel(meta, item.getType(), data);
+
+        boolean needsIngot = effective >= cfg().getMainMaterialThreshold();
         if (needsIngot && !hasIngot) {
             return EnhanceResult.error(msg().get("error.need-ingot"));
         }
@@ -61,7 +65,7 @@ public class EnhanceManager {
         // 未锻造过的装备没有经验条、无法预先积累经验，首次锻造豁免经验需求；
         // 已锻造(有经验条)的装备按实际主附魔等级正常收取
         int reqXp = PDCAdapter.isEnhanced(meta)
-                ? cfg().getXpRequired(effectiveMainLevel(meta, item.getType(), data))
+                ? cfg().getXpRequired(effective)
                 : 0;
 
         // 先跑完全部校验再扣钱，否则任何一个后置校验失败都会把金币吞掉
@@ -69,12 +73,13 @@ public class EnhanceManager {
             return EnhanceResult.error(msg().get("error.insufficient-xp", String.valueOf(reqXp)));
         }
 
-        if (!checkAndDeductGold(player, data.mainLevel())) {
-            return EnhanceResult.error(msg().get("error.insufficient-gold", String.valueOf(cfg().getCostGold(data.mainLevel()))));
+        if (!checkAndDeductGold(player, effective)) {
+            return EnhanceResult.error(msg().get("error.insufficient-gold", String.valueOf(cfg().getCostGold(effective))));
         }
 
-        // 目标等级语义：达到 +N 使用 rates[N-1]，末值(main-max 档)可达
-        boolean success = ThreadLocalRandom.current().nextInt(100) < cfg().getMainSuccessRate(data.mainLevel() + 1);
+        // 目标等级语义：达到 +N 使用 rates[N-1]，末值(main-max 档)可达。
+        // 成功率按本次锻造后的实际等级计：预附魔 5→6 与干净物品 5→6 同档
+        boolean success = ThreadLocalRandom.current().nextInt(100) < cfg().getMainSuccessRate(effective + 1);
 
         ItemStack result = item.clone();
         ItemMeta resultMeta = result.getItemMeta();
@@ -156,7 +161,9 @@ public class EnhanceManager {
         EnhanceData data = PDCAdapter.readData(meta);
 
         int reqMainLevel = cfg().getBranchMinMainLevel();
-        if (data.mainLevel() < reqMainLevel) {
+        // 主等级门槛按实际主附魔等级判定：预附魔/书合成抬高的真实等级计入门槛
+        int effectiveMain = effectiveMainLevel(meta, item.getType(), data);
+        if (effectiveMain < reqMainLevel) {
             return EnhanceResult.error(msg().get("error.low-main-for-branch", reqMainLevel));
         }
         // 分支等级 = 分支池附魔的真实等级之和(含强化前的原版基础附魔)，与主强化按等级判定一致；
@@ -183,9 +190,9 @@ public class EnhanceManager {
             return EnhanceResult.error(msg().get("error.all-branches-maxed"));
         }
 
-        // 同上：分支池校验全部通过后才扣钱
-        if (!checkAndDeductGold(player, data.mainLevel())) {
-            return EnhanceResult.error(msg().get("error.insufficient-gold", String.valueOf(cfg().getCostGold(data.mainLevel()))));
+        // 同上：分支池校验全部通过后才扣钱；费用按实际主附魔等级计，与主强化一致
+        if (!checkAndDeductGold(player, effectiveMain)) {
+            return EnhanceResult.error(msg().get("error.insufficient-gold", String.valueOf(cfg().getCostGold(effectiveMain))));
         }
 
         // 目标等级语义：达到分支 N 使用 rates[N-1]，与 README 分支等级表一致
@@ -355,11 +362,11 @@ public class EnhanceManager {
     }
 
     /**
-     * 经验需求用的「实际主附魔等级」：取真实附魔与持久值(底子快照 + PDC 次数)的较大者。
+     * 经验/材料门槛用的「实际主附魔等级」：取真实附魔与持久值(底子快照 + PDC 次数)的较大者。
      * 与分支 effectiveTotalLevel 对称：磨刀石能清掉真实附魔，清不掉底子快照，
-     * 只用真实等级算经验会随磨刀石重置而免费强化。
+     * 只用真实等级算需求会随磨刀石重置而免费强化。
      */
-    private static int effectiveMainLevel(ItemMeta meta, Material type, EnhanceData data) {
+    public static int effectiveMainLevel(ItemMeta meta, Material type, EnhanceData data) {
         String mainKey = cfg().getMainEnchantKey(ItemChecker.getEquipType(type));
         Enchantment ench = mainKey == null || mainKey.isEmpty() ? null : BranchPool.toEnchantment(mainKey);
         if (ench == null) return data.mainLevel();
