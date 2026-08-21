@@ -4,6 +4,7 @@ import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.cubex.hammr.HammrEnhance;
+import org.cubex.hammr.economy.IncomeAccountType;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -16,6 +17,8 @@ public final class ConfigSettings {
     private int costGold;
     private int[] costGoldPerLevel;
     private String incomeAccount;
+    private IncomeAccountType incomeAccountType;
+    private String incomeAccountCommand;
     private double levelDownChance;
     private double explosionChance;
     private int mainMaxLevel;
@@ -77,6 +80,12 @@ public final class ConfigSettings {
 
         incomeAccount = cfg.getString("income-account", "");
         if (incomeAccount == null) incomeAccount = "";
+        incomeAccount = incomeAccount.trim();
+
+        incomeAccountType = IncomeAccountType.parse(
+                cfg.getString("income-account-type"), IncomeAccountType.AUTO);
+        incomeAccountCommand = cfg.getString("income-account-command", "");
+        if (incomeAccountCommand == null) incomeAccountCommand = "";
 
         levelDownChance = cfg.getDouble("level-down-chance", 0.12);
         explosionChance = cfg.getDouble("explosion-chance", 0.03);
@@ -197,6 +206,14 @@ public final class ConfigSettings {
 
     public String getIncomeAccount() {
         return incomeAccount;
+    }
+
+    public IncomeAccountType getIncomeAccountType() {
+        return incomeAccountType;
+    }
+
+    public String getIncomeAccountCommand() {
+        return incomeAccountCommand;
     }
 
     public double getLevelDownChance() {

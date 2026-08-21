@@ -95,5 +95,14 @@ command:
 # 控制台日志
 log:
   vault-not-found: "Vault not found — gold costs will be skipped."
+  income-account-resolved: "Income account ''{0}'' resolved to UUID {1} (v{2}, mode: {3}). On a server using online-mode or an external login such as LittleSkin, a v3 UUID means the account is an offline-derived shell and the money will not be reachable."
+  income-account-unresolved: "Income account ''{0}'' matches no known player and no economy account. Transfers will still be attempted through Vault by name, but they will likely fail. Use the exact name of a player who has joined, or their UUID, or switch income-account-type to bank/command."
+  income-account-vault-name: "Income account ''{0}'' is not in this server''s player cache; deposits will be delegated to the economy plugin by name."
+  income-account-bank: "Income account ''{0}'' resolved to a bank account."
+  income-transfer-failed: "Failed to transfer {0} to income account ''{1}'': {2}"
+  income-transfer-lost: "{0} was taken from {2} but could not be delivered to income account ''{1}''."
+  income-bank-unsupported: "The economy plugin does not support bank accounts, so income account ''{0}'' cannot be credited."
+  income-command-empty: "income-account-type is set to command but income-account-command is empty."
+  income-command-failed: "Income transfer command failed: /{0}"
   enabled: "HammrEnhance enabled."
   disabled: "HammrEnhance disabled."

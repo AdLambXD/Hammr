@@ -29,9 +29,24 @@ cost-gold: 1000
 cost-gold-per-level: []
 
 # 强化金币收入去向 - 玩家扣除的金币会转入此账户
-# 留空("")则只扣除玩家金币, 不进行转账
-# 需填写 Vault 经济插件可识别的账户名(可以是已存在的玩家名, 部分经济插件也支持任意账户名)
+# 留空("")则只扣除玩家金币, 不进行转账(纯金币回收)
+# 可填: 玩家名 / 玩家 UUID(带不带横线都行) / 银行账户名
+# 本插件不会自己推算 UUID: 优先用服务端已知的真实 UUID(正版、外置登录如 LittleSkin 都适用),
+# 服务端缓存里没有该名字时, 交给 Vault 的名字接口由经济插件自行解析
 income-account: ""
+
+# 收入账户类型:
+#   auto    - 默认。优先按玩家账户转账; 解析不到玩家且存在同名银行账户时才转入银行
+#   player  - 强制按玩家账户转账, 在线/离线玩家都能收到(效果等同 cmi pay)
+#   bank    - Vault 银行账户, 需要经济插件实现银行功能
+#   command - 由控制台执行下方 income-account-command 转账, 适用于 Vault 接口覆盖不到的经济插件
+income-account-type: auto
+
+# 仅当 income-account-type: command 时生效
+# 可用占位符: %account%(= %player%, 即 income-account) / %amount% / %payer%(付款玩家)
+# CMI 示例:        "cmi money give %account% %amount%"
+# Essentials 示例: "eco give %account% %amount%"
+income-account-command: "cmi money give %account% %amount%"
 
 # 失败掉级概率 (0.0 - 1.0)
 level-down-chance: 0.12
