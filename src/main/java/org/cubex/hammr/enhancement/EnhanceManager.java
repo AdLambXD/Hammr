@@ -383,7 +383,7 @@ public class EnhanceManager {
         if (!eco.hasBalance(player, cost)) return false;
         // 扣款失败(经济插件拒绝/并发)时必须中止，否则等于免费强化还凭空给收入账户转账
         if (!eco.withdraw(player, cost)) return false;
-        eco.depositToAccount(cfg().getIncomeAccount(), cost);
+        eco.transferIncome(player, cost);
         return true;
     }
 
