@@ -127,14 +127,16 @@ public final class ConfigSettings {
                 }
             }
         }
-        if (branchPools.isEmpty()) {
-            branchPools.put("SWORD", List.of("fire_aspect", "bane_of_arthropods", "smite"));
-            branchPools.put("AXE", List.of("fire_aspect", "bane_of_arthropods", "smite"));
-            branchPools.put("HELMET", List.of("projectile_protection", "fire_protection", "blast_protection"));
-            branchPools.put("CHESTPLATE", List.of("projectile_protection", "fire_protection", "blast_protection"));
-            branchPools.put("LEGGINGS", List.of("projectile_protection", "fire_protection", "blast_protection"));
-            branchPools.put("BOOTS", List.of("projectile_protection", "fire_protection", "blast_protection"));
-        }
+        // 缺省补全：老版本 config.yml 没有新增装备类型的分支池时自动补上，
+        // 已存在的池保持用户配置不变
+        branchPools.putIfAbsent("SWORD", List.of("fire_aspect", "bane_of_arthropods", "smite"));
+        branchPools.putIfAbsent("AXE", List.of("fire_aspect", "bane_of_arthropods", "smite"));
+        branchPools.putIfAbsent("CROSSBOW", List.of("multishot", "piercing"));
+        branchPools.putIfAbsent("SPEAR", List.of("fire_aspect", "bane_of_arthropods", "smite", "lunge"));
+        branchPools.putIfAbsent("HELMET", List.of("projectile_protection", "fire_protection", "blast_protection"));
+        branchPools.putIfAbsent("CHESTPLATE", List.of("projectile_protection", "fire_protection", "blast_protection"));
+        branchPools.putIfAbsent("LEGGINGS", List.of("projectile_protection", "fire_protection", "blast_protection"));
+        branchPools.putIfAbsent("BOOTS", List.of("projectile_protection", "fire_protection", "blast_protection"));
 
         // main enchant mapping
         mainEnchantMapping = new LinkedHashMap<>();
@@ -147,17 +149,18 @@ public final class ConfigSettings {
                 }
             }
         }
-        if (mainEnchantMapping.isEmpty()) {
-            mainEnchantMapping.put("SWORD", "sharpness");
-            mainEnchantMapping.put("AXE", "sharpness");
-            mainEnchantMapping.put("PICKAXE", "efficiency");
-            mainEnchantMapping.put("SHOVEL", "efficiency");
-            mainEnchantMapping.put("HOE", "efficiency");
-            mainEnchantMapping.put("HELMET", "protection");
-            mainEnchantMapping.put("CHESTPLATE", "protection");
-            mainEnchantMapping.put("LEGGINGS", "protection");
-            mainEnchantMapping.put("BOOTS", "protection");
-        }
+        // 同上：老配置缺少弩 / 长矛映射时补全，避免主强化没有可写入的附魔
+        mainEnchantMapping.putIfAbsent("SWORD", "sharpness");
+        mainEnchantMapping.putIfAbsent("AXE", "sharpness");
+        mainEnchantMapping.putIfAbsent("CROSSBOW", "quick_charge");
+        mainEnchantMapping.putIfAbsent("SPEAR", "sharpness");
+        mainEnchantMapping.putIfAbsent("PICKAXE", "efficiency");
+        mainEnchantMapping.putIfAbsent("SHOVEL", "efficiency");
+        mainEnchantMapping.putIfAbsent("HOE", "efficiency");
+        mainEnchantMapping.putIfAbsent("HELMET", "protection");
+        mainEnchantMapping.putIfAbsent("CHESTPLATE", "protection");
+        mainEnchantMapping.putIfAbsent("LEGGINGS", "protection");
+        mainEnchantMapping.putIfAbsent("BOOTS", "protection");
 
         // progress bar
         // 限幅：过大的宽度会生成超长 Lore 字符串，可能撑爆物品数据包

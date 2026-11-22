@@ -67,7 +67,7 @@ public class AnvilListener implements Listener {
         // 无权限者连预览都不显示，铁砧保持原版行为
         if (!event.getView().getPlayer().hasPermission(PERMISSION_USE)) return;
 
-        if (!ItemChecker.isNetheriteEquipment(left)) return;
+        if (!ItemChecker.isEnhanceable(left)) return;
 
         if (right == null || right.getType().isAir()) return;
 
@@ -165,7 +165,7 @@ public class AnvilListener implements Listener {
             return;
         }
 
-        if (!ItemChecker.isNetheriteEquipment(left)) return;
+        if (!ItemChecker.isEnhanceable(left)) return;
         if (right == null || right.getType().isAir()) return;
 
         boolean hasDiamond = ItemChecker.isDiamond(right);
@@ -285,7 +285,7 @@ public class AnvilListener implements Listener {
     }
 
     private boolean isValidEnhancementContext(ItemStack left, ItemStack right) {
-        if (!ItemChecker.isNetheriteEquipment(left)) return false;
+        if (!ItemChecker.isEnhanceable(left)) return false;
         if (right == null || right.getType().isAir()) return false;
         boolean hasDiamond = ItemChecker.isDiamond(right);
         boolean hasIngot = ItemChecker.isNetheriteIngot(right);

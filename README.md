@@ -4,8 +4,8 @@
 
 **下界合金装备铁砧强化系统**
 
-![版本](https://img.shields.io/badge/版本-1.4.0-blue)
-![Minecraft](https://img.shields.io/badge/Minecraft-1.21.4+-brightgreen)
+![版本](https://img.shields.io/badge/版本-1.6.0-blue)
+![Minecraft](https://img.shields.io/badge/Minecraft-1.21.11+-brightgreen)
 ![Java](https://img.shields.io/badge/Java-21-orange)
 ![Paper](https://img.shields.io/badge/API-Paper-blueviolet)
 ![构建](https://img.shields.io/github/actions/workflow/status/AdLambXD/Hammr/build.yml?label=构建)
@@ -39,7 +39,7 @@
 
 ## 🎮 插件简介
 
-HammrEnhance 是一款基于 **Paper** 的 Minecraft 插件，为下界合金装备（武器 / 工具 / 盔甲）引入了一套完整的 **铁砧强化养成系统**。
+HammrEnhance 是一款基于 **Paper** 的 Minecraft 插件，为下界合金装备（武器 / 工具 / 盔甲）、**弩**与**下界合金长矛**引入了一套完整的 **铁砧强化养成系统**。
 
 玩家将装备放入铁砧并消耗材料、金币与经验进行强化，不断提升装备的主附魔等级（如 锋利、效率、保护）。强化成功的装备会在 Lore 中显示成长状态，例如：
 
@@ -59,6 +59,7 @@ HammrEnhance 是一款基于 **Paper** 的 Minecraft 插件，为下界合金装
 
 - **🛠 铁砧主强化**：在铁砧中消耗材料（钻石 / 下界合金锭）提升装备主等级，默认最高 `+10`。
 - **🧬 分支强化**：主等级达到门槛后，可为武器 / 盔甲随机附加**分支附魔**（如 火焰附加、亡灵杀手、弹射物保护等），分支池按装备类型独立配置。
+- **🏹 弩与长矛支持**：弩（快速装填 + 多重射击 / 穿透）与下界合金长矛（锋利 + 火焰附加 / 亡灵杀手 / 突进等）同样可在铁砧中强化，长矛可使用专属附魔 **突进 (lunge)**。
 - **📈 装备经验系统**：用工具挖方块、拾取经验球都会为手持/穿戴的强化装备积累经验，Lore 进度条实时展示。
 - **👁 铁砧预览界面**：放入材料后铁砧输出栏自动显示强化类型、材料与金币消耗，点击即执行，操作直观。
 - **💥 失败惩罚机制**：失败有概率掉级（`level-down-chance`）与铁砧爆炸（`explosion-chance`），爆炸时装备会被炸落到地面，紧张感拉满。
@@ -73,7 +74,7 @@ HammrEnhance 是一款基于 **Paper** 的 Minecraft 插件，为下界合金装
 
 | 项目 | 要求 |
 | --- | --- |
-| 服务端 | [Paper](https://papermc.io) **1.21.4** 及以上 |
+| 服务端 | [Paper](https://papermc.io) **1.21.11** 及以上（长矛需要 1.21.11+） |
 | Java | **21** |
 | Vault（可选） | 需要金币消耗功能时安装，缺省时自动跳过金币扣费 |
 
@@ -145,7 +146,8 @@ HammrEnhance 是一款基于 **Paper** 的 Minecraft 插件，为下界合金装
 
 | 装备 | 主附魔 |
 | --- | --- |
-| 剑 / 斧 | 锋利 (sharpness) |
+| 剑 / 斧 / 长矛 | 锋利 (sharpness) |
+| 弩 | 快速装填 (quick_charge) |
 | 镐 / 锹 / 锄 | 效率 (efficiency) |
 | 头盔 / 胸甲 / 护腿 / 靴子 | 保护 (protection) |
 
@@ -168,6 +170,8 @@ HammrEnhance 是一款基于 **Paper** 的 Minecraft 插件，为下界合金装
 | 装备类型 | 分支池 |
 | --- | --- |
 | 剑 / 斧 | 火焰附加、节肢杀手、亡灵杀手 |
+| 长矛 | 火焰附加、节肢杀手、亡灵杀手、突进 |
+| 弩 | 多重射击、穿透 |
 | 头盔 / 胸甲 / 护腿 / 靴子 | 弹射物保护、火焰保护、爆炸保护 |
 
 **成功率**（默认，分支强化 `branch-success-rates`）：
@@ -347,6 +351,14 @@ branch-pools:
     - fire_aspect
     - bane_of_arthropods
     - smite
+  CROSSBOW:
+    - multishot
+    - piercing
+  SPEAR:
+    - fire_aspect
+    - bane_of_arthropods
+    - smite
+    - lunge
   HELMET:
     - projectile_protection
     - fire_protection
@@ -368,6 +380,8 @@ branch-pools:
 main-enchant-mapping:
   SWORD: sharpness
   AXE: sharpness
+  CROSSBOW: quick_charge
+  SPEAR: sharpness
   PICKAXE: efficiency
   SHOVEL: efficiency
   HOE: efficiency
@@ -398,7 +412,7 @@ progress-bar:
 | --- | --- |
 | `error.*` | 各类失败 / 条件不满足的提示 |
 | `actionbar.*` | 强化成功 / 失败 / 掉级 / 爆炸的 ActionBar 消息 |
-| `item-name.*` | 下界合金装备的中文名称 |
+| `item-name.*` | 可强化装备（下界合金装备 / 弩 / 长矛）的中文名称 |
 | `material-name.*` | 材料（钻石 / 下界合金锭）名称 |
 | `enchant-name.*` | 附魔的中文显示名称 |
 | `preview.*` | 铁砧预览界面的标题 / 消耗 / 操作提示 |
@@ -439,7 +453,7 @@ A：主强化失败最多掉 1 级；若掉到 0 级则清除全部强化。只�
 A：+5 → +6 仍使用钻石（低于阈值 6）；+6 → +7 起需要下界合金锭。
 
 **Q：支持 1.20 或更早版本吗？**
-A：不支持，插件要求 Paper 1.21.4+ 与 Java 21。
+A：不支持，插件要求 Paper 1.21.11+ 与 Java 21（长矛自 1.21.11 起才存在）。
 
 **Q：装备上的普通附魔会被清除吗？**
 A：不会。插件只管理自身的强化附魔与数据，其余附魔保持不变。
@@ -488,13 +502,20 @@ cd Hammr
 
 ### 技术栈
 
-- Java 21 · Gradle · Paper API 1.21.4
+- Java 21 · Gradle · Paper API 1.21.11
 - [VaultAPI](https://github.com/MilkBowl/VaultAPI)（可选依赖）
 - Adventure 组件（彩色消息 / ActionBar）
 
 ---
 
 ## 📝 更新日志
+
+### v1.6.0
+- 新增 **弩** 与 **下界合金长矛** 强化支持：
+  - 弩：主附魔为快速装填，分支池为多重射击 / 穿透
+  - 长矛：主附魔为锋利，分支池为火焰附加 / 节肢杀手 / 亡灵杀手 / 突进
+- 旧版 `config.yml` 会自动补全新增装备类型的分支池与主附魔映射，无需手动迁移
+- Paper API 升级至 1.21.11（长矛自 1.21.11 起加入游戏）
 
 ### v1.4.0
 - 重塑难度曲线（整体难度近似、形态更平滑）：

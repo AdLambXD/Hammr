@@ -101,6 +101,14 @@ branch-pools:
     - fire_aspect
     - bane_of_arthropods
     - smite
+  CROSSBOW:
+    - multishot
+    - piercing
+  SPEAR:
+    - fire_aspect
+    - bane_of_arthropods
+    - smite
+    - lunge
   HELMET:
     - projectile_protection
     - fire_protection
@@ -125,6 +133,8 @@ branch-pools:
 main-enchant-mapping:
   SWORD: sharpness
   AXE: sharpness
+  CROSSBOW: quick_charge
+  SPEAR: sharpness
   PICKAXE: efficiency
   SHOVEL: efficiency
   HOE: efficiency

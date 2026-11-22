@@ -406,6 +406,8 @@ public class EnhanceManager {
         return switch (item.getType()) {
             case NETHERITE_SWORD -> msg().get("item-name.NETHERITE_SWORD");
             case NETHERITE_AXE -> msg().get("item-name.NETHERITE_AXE");
+            case CROSSBOW -> msg().get("item-name.CROSSBOW");
+            case NETHERITE_SPEAR -> msg().get("item-name.NETHERITE_SPEAR");
             case NETHERITE_PICKAXE -> msg().get("item-name.NETHERITE_PICKAXE");
             case NETHERITE_SHOVEL -> msg().get("item-name.NETHERITE_SHOVEL");
             case NETHERITE_HOE -> msg().get("item-name.NETHERITE_HOE");
@@ -432,7 +434,7 @@ public class EnhanceManager {
     }
 
     private static void syncItem(ItemStack item) {
-        if (!ItemChecker.isNetheriteEquipment(item)) return;
+        if (!ItemChecker.isEnhanceable(item)) return;
         ItemMeta meta = item.getItemMeta();
         if (meta == null) return;
 

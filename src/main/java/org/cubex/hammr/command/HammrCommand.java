@@ -85,7 +85,7 @@ public class HammrCommand implements TabExecutor {
             sender.sendMessage(Component.text(msg().get("command.need-item"), NamedTextColor.RED));
             return;
         }
-        if (!ItemChecker.isNetheriteEquipment(item)) {
+        if (!ItemChecker.isEnhanceable(item)) {
             sender.sendMessage(Component.text(msg().get("command.not-enhanceable"), NamedTextColor.RED));
             return;
         }
@@ -224,7 +224,7 @@ public class HammrCommand implements TabExecutor {
 
         if (sender instanceof Player player) {
             ItemStack held = player.getInventory().getItemInMainHand();
-            if (held.getType() != Material.AIR && ItemChecker.isNetheriteEquipment(held)) {
+            if (held.getType() != Material.AIR && ItemChecker.isEnhanceable(held)) {
                 giveEnhancedItem(target, held, mainLevel, branchType, branchLevel);
                 sender.sendMessage(Component.text(msg().get("command.give-success", target.getName()), NamedTextColor.GREEN));
                 return;
@@ -290,6 +290,8 @@ public class HammrCommand implements TabExecutor {
         } else if (args.length == 4 && (args[0].equalsIgnoreCase("set") || args[0].equalsIgnoreCase("give"))) {
             addPoolCompletions(completions, settings, "SWORD");
             addPoolCompletions(completions, settings, "AXE");
+            addPoolCompletions(completions, settings, "CROSSBOW");
+            addPoolCompletions(completions, settings, "SPEAR");
             addPoolCompletions(completions, settings, "HELMET");
             completions.add("random");
         } else if (args.length == 5 && (args[0].equalsIgnoreCase("set") || args[0].equalsIgnoreCase("give"))) {
