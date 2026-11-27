@@ -43,7 +43,7 @@ public class XpListener implements Listener {
      * 避免每颗经验球 / 每次挖掘都为无关物品克隆一次 ItemMeta。
      */
     private void addXp(ItemStack item, int xp) {
-        if (!ItemChecker.isNetheriteEquipment(item)) return;
+        if (!ItemChecker.isEnhanceable(item)) return;
         EnhanceManager.addItemXp(item, xp);
     }
 }

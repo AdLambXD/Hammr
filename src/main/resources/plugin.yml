@@ -4,7 +4,7 @@ main: org.cubex.hammr.HammrEnhance
 api-version: "1.21"
 authors: [CubeX, AdLamb, FZAoao]
 website: https://github.com/AdLambXD/Hammr
-description: 下界合金装备铁砧强化系统
+description: 下界合金装备 / 弩 / 长矛铁砧强化系统
 soft-depend:
   - Vault
 

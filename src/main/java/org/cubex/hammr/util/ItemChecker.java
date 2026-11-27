@@ -7,7 +7,8 @@ import java.util.Set;
 public final class ItemChecker {
 
     private static final Set<Material> WEAPONS = Set.of(
-            Material.NETHERITE_SWORD, Material.NETHERITE_AXE
+            Material.NETHERITE_SWORD, Material.NETHERITE_AXE,
+            Material.CROSSBOW, Material.NETHERITE_SPEAR
     );
     private static final Set<Material> TOOLS = Set.of(
             Material.NETHERITE_PICKAXE, Material.NETHERITE_SHOVEL, Material.NETHERITE_HOE
@@ -24,7 +25,7 @@ public final class ItemChecker {
         ALL.addAll(ARMOR);
     }
 
-    public static boolean isNetheriteEquipment(ItemStack item) {
+    public static boolean isEnhanceable(ItemStack item) {
         return item != null && !item.getType().isAir() && ALL.contains(item.getType());
     }
 
@@ -62,6 +63,8 @@ public final class ItemChecker {
         return switch (material) {
             case NETHERITE_SWORD -> "SWORD";
             case NETHERITE_AXE -> "AXE";
+            case CROSSBOW -> "CROSSBOW";
+            case NETHERITE_SPEAR -> "SPEAR";
             //啥子ds边写边忘
             case NETHERITE_PICKAXE -> "PICKAXE";
             case NETHERITE_SHOVEL -> "SHOVEL";

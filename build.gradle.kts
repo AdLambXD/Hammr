@@ -3,7 +3,7 @@ plugins {
 }
 
 group = "org.cubex.hammr"
-version = "1.5.1"
+version = "1.6.0"
 
 java {
     toolchain.languageVersion.set(JavaLanguageVersion.of(21))
@@ -16,7 +16,7 @@ repositories {
 }
 
 dependencies {
-    compileOnly("io.papermc.paper:paper-api:1.21.4-R0.1-SNAPSHOT")
+    compileOnly("io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT")
     compileOnly("com.github.MilkBowl:VaultAPI:1.7") {
         exclude("org.bukkit", "bukkit")
     }
