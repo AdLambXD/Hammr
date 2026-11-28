@@ -8,7 +8,8 @@ public final class ItemChecker {
 
     private static final Set<Material> WEAPONS = Set.of(
             Material.NETHERITE_SWORD, Material.NETHERITE_AXE,
-            Material.CROSSBOW, Material.NETHERITE_SPEAR
+            Material.CROSSBOW, Material.NETHERITE_SPEAR,
+            Material.MACE, Material.TRIDENT
     );
     private static final Set<Material> TOOLS = Set.of(
             Material.NETHERITE_PICKAXE, Material.NETHERITE_SHOVEL, Material.NETHERITE_HOE
@@ -65,6 +66,8 @@ public final class ItemChecker {
             case NETHERITE_AXE -> "AXE";
             case CROSSBOW -> "CROSSBOW";
             case NETHERITE_SPEAR -> "SPEAR";
+            case MACE -> "MACE";
+            case TRIDENT -> "TRIDENT";
             //啥子ds边写边忘
             case NETHERITE_PICKAXE -> "PICKAXE";
             case NETHERITE_SHOVEL -> "SHOVEL";

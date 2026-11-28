@@ -109,6 +109,15 @@ branch-pools:
     - bane_of_arthropods
     - smite
     - lunge
+  MACE:
+    - breach
+    - wind_burst
+    - fire_aspect
+    - smite
+  TRIDENT:
+    - loyalty
+    - riptide
+    - channeling
   HELMET:
     - projectile_protection
     - fire_protection
@@ -135,6 +144,8 @@ main-enchant-mapping:
   AXE: sharpness
   CROSSBOW: quick_charge
   SPEAR: sharpness
+  MACE: density
+  TRIDENT: impaling
   PICKAXE: efficiency
   SHOVEL: efficiency
   HOE: efficiency
