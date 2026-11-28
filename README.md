@@ -4,7 +4,7 @@
 
 **下界合金装备铁砧强化系统**
 
-![版本](https://img.shields.io/badge/版本-1.6.0-blue)
+![版本](https://img.shields.io/badge/版本-1.7.0-blue)
 ![Minecraft](https://img.shields.io/badge/Minecraft-1.21.11+-brightgreen)
 ![Java](https://img.shields.io/badge/Java-21-orange)
 ![Paper](https://img.shields.io/badge/API-Paper-blueviolet)
@@ -39,7 +39,7 @@
 
 ## 🎮 插件简介
 
-HammrEnhance 是一款基于 **Paper** 的 Minecraft 插件，为下界合金装备（武器 / 工具 / 盔甲）、**弩**与**下界合金长矛**引入了一套完整的 **铁砧强化养成系统**。
+HammrEnhance 是一款基于 **Paper** 的 Minecraft 插件，为下界合金装备（武器 / 工具 / 盔甲）、**弩**、**下界合金长矛**、**重锤**与**三叉戟**引入了一套完整的 **铁砧强化养成系统**。
 
 玩家将装备放入铁砧并消耗材料、金币与经验进行强化，不断提升装备的主附魔等级（如 锋利、效率、保护）。强化成功的装备会在 Lore 中显示成长状态，例如：
 
@@ -60,6 +60,7 @@ HammrEnhance 是一款基于 **Paper** 的 Minecraft 插件，为下界合金装
 - **🛠 铁砧主强化**：在铁砧中消耗材料（钻石 / 下界合金锭）提升装备主等级，默认最高 `+10`。
 - **🧬 分支强化**：主等级达到门槛后，可为武器 / 盔甲随机附加**分支附魔**（如 火焰附加、亡灵杀手、弹射物保护等），分支池按装备类型独立配置。
 - **🏹 弩与长矛支持**：弩（快速装填 + 多重射击 / 穿透）与下界合金长矛（锋利 + 火焰附加 / 亡灵杀手 / 突进等）同样可在铁砧中强化，长矛可使用专属附魔 **突进 (lunge)**。
+- **🔨 重锤与三叉戟支持**：重锤（密度 + 破甲 / 风爆等）与三叉戟（穿刺 + 忠诚 / 激流 / 引雷）也可强化，主附魔与分支池均可配置。
 - **📈 装备经验系统**：用工具挖方块、拾取经验球都会为手持/穿戴的强化装备积累经验，Lore 进度条实时展示。
 - **👁 铁砧预览界面**：放入材料后铁砧输出栏自动显示强化类型、材料与金币消耗，点击即执行，操作直观。
 - **💥 失败惩罚机制**：失败有概率掉级（`level-down-chance`）与铁砧爆炸（`explosion-chance`），爆炸时装备会被炸落到地面，紧张感拉满。
@@ -148,6 +149,8 @@ HammrEnhance 是一款基于 **Paper** 的 Minecraft 插件，为下界合金装
 | --- | --- |
 | 剑 / 斧 / 长矛 | 锋利 (sharpness) |
 | 弩 | 快速装填 (quick_charge) |
+| 重锤 | 密度 (density) |
+| 三叉戟 | 穿刺 (impaling) |
 | 镐 / 锹 / 锄 | 效率 (efficiency) |
 | 头盔 / 胸甲 / 护腿 / 靴子 | 保护 (protection) |
 
@@ -172,6 +175,8 @@ HammrEnhance 是一款基于 **Paper** 的 Minecraft 插件，为下界合金装
 | 剑 / 斧 | 火焰附加、节肢杀手、亡灵杀手 |
 | 长矛 | 火焰附加、节肢杀手、亡灵杀手、突进 |
 | 弩 | 多重射击、穿透 |
+| 重锤 | 破甲、风爆、火焰附加、亡灵杀手 |
+| 三叉戟 | 忠诚、激流、引雷 |
 | 头盔 / 胸甲 / 护腿 / 靴子 | 弹射物保护、火焰保护、爆炸保护 |
 
 **成功率**（默认，分支强化 `branch-success-rates`）：
@@ -359,6 +364,15 @@ branch-pools:
     - bane_of_arthropods
     - smite
     - lunge
+  MACE:
+    - breach
+    - wind_burst
+    - fire_aspect
+    - smite
+  TRIDENT:
+    - loyalty
+    - riptide
+    - channeling
   HELMET:
     - projectile_protection
     - fire_protection
@@ -382,6 +396,8 @@ main-enchant-mapping:
   AXE: sharpness
   CROSSBOW: quick_charge
   SPEAR: sharpness
+  MACE: density
+  TRIDENT: impaling
   PICKAXE: efficiency
   SHOVEL: efficiency
   HOE: efficiency
@@ -412,7 +428,7 @@ progress-bar:
 | --- | --- |
 | `error.*` | 各类失败 / 条件不满足的提示 |
 | `actionbar.*` | 强化成功 / 失败 / 掉级 / 爆炸的 ActionBar 消息 |
-| `item-name.*` | 可强化装备（下界合金装备 / 弩 / 长矛）的中文名称 |
+| `item-name.*` | 可强化装备（下界合金装备 / 弩 / 长矛 / 重锤 / 三叉戟）的中文名称 |
 | `material-name.*` | 材料（钻石 / 下界合金锭）名称 |
 | `enchant-name.*` | 附魔的中文显示名称 |
 | `preview.*` | 铁砧预览界面的标题 / 消耗 / 操作提示 |
@@ -509,6 +525,12 @@ cd Hammr
 ---
 
 ## 📝 更新日志
+
+### v1.7.0
+- 新增 **重锤** 与 **三叉戟** 强化支持：
+  - 重锤：主附魔为密度，分支池为破甲 / 风爆 / 火焰附加 / 亡灵杀手
+  - 三叉戟：主附魔为穿刺，分支池为忠诚 / 激流 / 引雷
+- 旧版 `config.yml` 同样会自动补全新增装备类型的分支池与主附魔映射
 
 ### v1.6.0
 - 新增 **弩** 与 **下界合金长矛** 强化支持：

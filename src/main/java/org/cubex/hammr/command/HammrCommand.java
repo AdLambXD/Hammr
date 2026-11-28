@@ -292,6 +292,8 @@ public class HammrCommand implements TabExecutor {
             addPoolCompletions(completions, settings, "AXE");
             addPoolCompletions(completions, settings, "CROSSBOW");
             addPoolCompletions(completions, settings, "SPEAR");
+            addPoolCompletions(completions, settings, "MACE");
+            addPoolCompletions(completions, settings, "TRIDENT");
             addPoolCompletions(completions, settings, "HELMET");
             completions.add("random");
         } else if (args.length == 5 && (args[0].equalsIgnoreCase("set") || args[0].equalsIgnoreCase("give"))) {

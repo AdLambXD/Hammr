@@ -133,6 +133,8 @@ public final class ConfigSettings {
         branchPools.putIfAbsent("AXE", List.of("fire_aspect", "bane_of_arthropods", "smite"));
         branchPools.putIfAbsent("CROSSBOW", List.of("multishot", "piercing"));
         branchPools.putIfAbsent("SPEAR", List.of("fire_aspect", "bane_of_arthropods", "smite", "lunge"));
+        branchPools.putIfAbsent("MACE", List.of("breach", "wind_burst", "fire_aspect", "smite"));
+        branchPools.putIfAbsent("TRIDENT", List.of("loyalty", "riptide", "channeling"));
         branchPools.putIfAbsent("HELMET", List.of("projectile_protection", "fire_protection", "blast_protection"));
         branchPools.putIfAbsent("CHESTPLATE", List.of("projectile_protection", "fire_protection", "blast_protection"));
         branchPools.putIfAbsent("LEGGINGS", List.of("projectile_protection", "fire_protection", "blast_protection"));
@@ -154,6 +156,8 @@ public final class ConfigSettings {
         mainEnchantMapping.putIfAbsent("AXE", "sharpness");
         mainEnchantMapping.putIfAbsent("CROSSBOW", "quick_charge");
         mainEnchantMapping.putIfAbsent("SPEAR", "sharpness");
+        mainEnchantMapping.putIfAbsent("MACE", "density");
+        mainEnchantMapping.putIfAbsent("TRIDENT", "impaling");
         mainEnchantMapping.putIfAbsent("PICKAXE", "efficiency");
         mainEnchantMapping.putIfAbsent("SHOVEL", "efficiency");
         mainEnchantMapping.putIfAbsent("HOE", "efficiency");

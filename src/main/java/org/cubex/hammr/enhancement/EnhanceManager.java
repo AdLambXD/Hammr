@@ -408,6 +408,8 @@ public class EnhanceManager {
             case NETHERITE_AXE -> msg().get("item-name.NETHERITE_AXE");
             case CROSSBOW -> msg().get("item-name.CROSSBOW");
             case NETHERITE_SPEAR -> msg().get("item-name.NETHERITE_SPEAR");
+            case MACE -> msg().get("item-name.MACE");
+            case TRIDENT -> msg().get("item-name.TRIDENT");
             case NETHERITE_PICKAXE -> msg().get("item-name.NETHERITE_PICKAXE");
             case NETHERITE_SHOVEL -> msg().get("item-name.NETHERITE_SHOVEL");
             case NETHERITE_HOE -> msg().get("item-name.NETHERITE_HOE");
